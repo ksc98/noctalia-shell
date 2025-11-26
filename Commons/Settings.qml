@@ -384,6 +384,13 @@ Singleton {
       property bool useCustomColors: false
       property string warningColor: ""
       property string criticalColor: ""
+      property int updateInterval: 2000
+      property string coolantSensorChip: ""
+      property string coolantSensorLabel: ""
+      property string coolantSensorValueKey: ""
+      property string cpuWattSensorChip: ""
+      property string cpuWattSensorLabel: ""
+      property string cpuWattSensorValueKey: ""
     }
 
     // dock

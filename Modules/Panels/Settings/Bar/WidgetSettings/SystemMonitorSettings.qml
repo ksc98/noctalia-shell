@@ -17,6 +17,8 @@ ColumnLayout {
   property bool valueUsePrimaryColor: widgetData.usePrimaryColor !== undefined ? widgetData.usePrimaryColor : widgetMetadata.usePrimaryColor
   property bool valueShowCpuUsage: widgetData.showCpuUsage !== undefined ? widgetData.showCpuUsage : widgetMetadata.showCpuUsage
   property bool valueShowCpuTemp: widgetData.showCpuTemp !== undefined ? widgetData.showCpuTemp : widgetMetadata.showCpuTemp
+  property bool valueShowCpuWatt: widgetData.showCpuWatt !== undefined ? widgetData.showCpuWatt : widgetMetadata.showCpuWatt
+  property bool valueShowCoolantTemp: widgetData.showCoolantTemp !== undefined ? widgetData.showCoolantTemp : widgetMetadata.showCoolantTemp
   property bool valueShowMemoryUsage: widgetData.showMemoryUsage !== undefined ? widgetData.showMemoryUsage : widgetMetadata.showMemoryUsage
   property bool valueShowMemoryAsPercent: widgetData.showMemoryAsPercent !== undefined ? widgetData.showMemoryAsPercent : widgetMetadata.showMemoryAsPercent
   property bool valueShowNetworkStats: widgetData.showNetworkStats !== undefined ? widgetData.showNetworkStats : widgetMetadata.showNetworkStats
@@ -28,6 +30,8 @@ ColumnLayout {
     settings.usePrimaryColor = valueUsePrimaryColor;
     settings.showCpuUsage = valueShowCpuUsage;
     settings.showCpuTemp = valueShowCpuTemp;
+    settings.showCpuWatt = valueShowCpuWatt;
+    settings.showCoolantTemp = valueShowCoolantTemp;
     settings.showMemoryUsage = valueShowMemoryUsage;
     settings.showMemoryAsPercent = valueShowMemoryAsPercent;
     settings.showNetworkStats = valueShowNetworkStats;
@@ -61,6 +65,24 @@ ColumnLayout {
     description: I18n.tr("bar.widget-settings.system-monitor.cpu-temperature.description")
     checked: valueShowCpuTemp
     onToggled: checked => valueShowCpuTemp = checked
+  }
+
+  NToggle {
+    id: showCpuWatt
+    Layout.fillWidth: true
+    label: "CPU wattage"
+    description: "Display CPU power draw using a configured sensor."
+    checked: valueShowCpuWatt
+    onToggled: checked => valueShowCpuWatt = checked
+  }
+
+  NToggle {
+    id: showCoolantTemp
+    Layout.fillWidth: true
+    label: "Coolant temperature"
+    description: "Display coolant loop temperature from the configured sensor."
+    checked: valueShowCoolantTemp
+    onToggled: checked => valueShowCoolantTemp = checked
   }
 
   NToggle {

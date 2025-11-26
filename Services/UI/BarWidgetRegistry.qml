@@ -186,6 +186,8 @@ Singleton {
                                     "usePrimaryColor": false,
                                     "showCpuUsage": true,
                                     "showCpuTemp": true,
+                                    "showCpuWatt": false,
+                                    "showCoolantTemp": false,
                                     "showMemoryUsage": true,
                                     "showMemoryAsPercent": false,
                                     "showNetworkStats": false,

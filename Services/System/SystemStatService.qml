@@ -10,7 +10,7 @@ Singleton {
   id: root
 
   // Configuration
-  property int sleepDuration: 3000
+  property int sleepDuration: Settings.data.systemMonitor.updateInterval || 2000
 
   // Public values
   property real cpuUsage: 0
@@ -20,6 +20,10 @@ Singleton {
   property var diskPercents: ({})
   property real rxSpeed: 0
   property real txSpeed: 0
+  property real coolantTemp: 0
+  property real cpuWatt: 0
+  // Cache resolved chip names to avoid matching on every refresh
+  property var sensorChipCache: ({})
 
   // Internal state for CPU calculation
   property var prevCpuStats: null
@@ -66,6 +70,9 @@ Singleton {
       dfProcess.running = true;
 
       updateCpuTemperature();
+      if (shouldReadSensorProcess() && !sensorsProcess.running) {
+        sensorsProcess.running = true;
+      }
     }
   }
 
@@ -111,6 +118,18 @@ Singleton {
           }
         }
         root.diskPercents = newPercents;
+      }
+    }
+  }
+
+  // Process to fetch coolant temperature via sensors -j
+  Process {
+    id: sensorsProcess
+    command: ["sensors", "-j"]
+    running: false
+    stdout: StdioCollector {
+      onStreamFinished: {
+        root.processSensorData(text);
       }
     }
   }
@@ -212,7 +231,9 @@ Singleton {
 
     if (memTotal > 0) {
       const usageKb = memTotal - memAvailable;
-      root.memGb = (usageKb / 1048576).toFixed(1); // 1024*1024 = 1048576
+      const memGbValue = usageKb / 1048576; // 1024*1024 = 1048576
+      // Cap at 99.9 GB for display consistency
+      root.memGb = Math.min(99.9, parseFloat(memGbValue.toFixed(1)));
       root.memPercent = Math.round((usageKb / memTotal) * 100);
     }
   }
@@ -252,11 +273,110 @@ Singleton {
       const diffIdle = totalIdle - prevTotalIdle;
 
       if (diffTotal > 0) {
-        root.cpuUsage = (((diffTotal - diffIdle) / diffTotal) * 100).toFixed(1);
+        root.cpuUsage = Math.round(((diffTotal - diffIdle) / diffTotal) * 100);
       }
     }
 
     root.prevCpuStats = stats;
+  }
+
+  function processSensorData(rawText) {
+    if (!rawText)
+      return;
+    let data = null;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      Logger.w("SystemStat", `Failed to parse sensor data: ${e}`);
+      return;
+    }
+
+    const coolantValue = readConfiguredSensorValue(data, Settings.data.systemMonitor.coolantSensorChip, Settings.data.systemMonitor.coolantSensorLabel, Settings.data.systemMonitor.coolantSensorValueKey);
+    if (coolantValue !== null) {
+      root.coolantTemp = coolantValue;
+    }
+
+    const wattValue = readConfiguredSensorValue(data, Settings.data.systemMonitor.cpuWattSensorChip, Settings.data.systemMonitor.cpuWattSensorLabel, Settings.data.systemMonitor.cpuWattSensorValueKey);
+    if (wattValue !== null) {
+      root.cpuWatt = wattValue;
+    }
+  }
+
+  function readConfiguredSensorValue(data, chipName, sensorName, valueKey) {
+    if (!data || !chipName || !sensorName)
+      return null;
+    const chipKey = resolveSensorChipKey(data, chipName);
+    if (!chipKey)
+      return null;
+    const chipData = data[chipKey];
+    const sensorData = chipData[sensorName];
+    if (!sensorData)
+      return null;
+    if (valueKey && sensorData[valueKey] !== undefined) {
+      return Number(sensorData[valueKey]) || 0;
+    }
+    for (const key in sensorData) {
+      if (Object.prototype.hasOwnProperty.call(sensorData, key)) {
+        const value = sensorData[key];
+        if (typeof value === "number" && key.endsWith("_input")) {
+          return Number(value) || 0;
+        }
+      }
+    }
+    return null;
+  }
+
+  function resolveSensorChipKey(data, chipName) {
+    if (!data || !chipName)
+      return "";
+
+    const cachedKey = root.sensorChipCache[chipName];
+    if (cachedKey) {
+      if (data[cachedKey]) {
+        return cachedKey;
+      }
+      delete root.sensorChipCache[chipName];
+    }
+
+    if (data[chipName]) {
+      root.sensorChipCache[chipName] = chipName;
+      return chipName;
+    }
+
+    const lowerChipName = chipName.toLowerCase();
+    for (const key in data) {
+      if (key.toLowerCase() === lowerChipName) {
+        root.sensorChipCache[chipName] = key;
+        return key;
+      }
+    }
+
+    const chipSegments = chipName.split("-");
+    for (let len = chipSegments.length - 1; len > 0; len--) {
+      const prefix = chipSegments.slice(0, len).join("-");
+      if (!prefix)
+        continue;
+      const prefixWithDash = (prefix + "-").toLowerCase();
+      for (const key in data) {
+        if (key.toLowerCase().startsWith(prefixWithDash)) {
+          if (!root.sensorChipCache[chipName]) {
+            Logger.w("SystemStat", `Matched sensor chip "${chipName}" to "${key}"`);
+          }
+          root.sensorChipCache[chipName] = key;
+          return key;
+        }
+      }
+    }
+
+    return "";
+  }
+
+  function shouldReadSensorProcess() {
+    return hasConfiguredSensor(Settings.data.systemMonitor.coolantSensorChip, Settings.data.systemMonitor.coolantSensorLabel) || hasConfiguredSensor(Settings.data.systemMonitor.cpuWattSensorChip, Settings.data.systemMonitor.cpuWattSensorLabel);
+  }
+
+  function hasConfiguredSensor(chip, label) {
+    return !!(chip && label);
   }
 
   // -------------------------------------------------------
@@ -329,39 +449,42 @@ Singleton {
   // -------------------------------------------------------
   // Helper function to format network speeds
   function formatSpeed(bytesPerSecond) {
-    if (bytesPerSecond < 1024 * 1024) {
-      const kb = bytesPerSecond / 1024;
-      if (kb < 10) {
-        return kb.toFixed(1) + "KB";
-      } else {
-        return Math.round(kb) + "KB";
-      }
-    } else if (bytesPerSecond < 1024 * 1024 * 1024) {
-      return (bytesPerSecond / (1024 * 1024)).toFixed(1) + "MB";
-    } else {
-      return (bytesPerSecond / (1024 * 1024 * 1024)).toFixed(1) + "GB";
+    const kbPerSecond = bytesPerSecond / 1024;
+
+    // Use KB/s for speeds up to 99.9 KB/s
+    if (kbPerSecond <= 99.9) {
+      return kbPerSecond.toFixed(1) + "KB";
     }
+
+    // Switch to MB/s for higher speeds
+    const mbPerSecond = bytesPerSecond / (1024 * 1024);
+    // Cap at 99.9 MB/s for display consistency
+    if (mbPerSecond > 99.9) {
+      return "99.9MB";
+    }
+    return mbPerSecond.toFixed(1) + "MB";
   }
 
   // -------------------------------------------------------
   // Compact speed formatter for vertical bar display
   function formatCompactSpeed(bytesPerSecond) {
     if (!bytesPerSecond || bytesPerSecond <= 0)
-      return "0";
-    const units = ["", "K", "M", "G"];
-    let value = bytesPerSecond;
-    let unitIndex = 0;
-    while (value >= 1024 && unitIndex < units.length - 1) {
-      value = value / 1024.0;
-      unitIndex++;
+      return "0.0K";
+
+    const kbPerSecond = bytesPerSecond / 1024;
+
+    // Use K for speeds up to 99.9 KB/s
+    if (kbPerSecond <= 99.9) {
+      return kbPerSecond.toFixed(1) + "K";
     }
-    // Promote at ~100 of current unit (e.g., 100k -> ~0.1M shown as 0.1M or 0M if rounded)
-    if (unitIndex < units.length - 1 && value >= 100) {
-      value = value / 1024.0;
-      unitIndex++;
+
+    // Switch to M for higher speeds
+    const mbPerSecond = bytesPerSecond / (1024 * 1024);
+    // Cap at 99.9 MB/s for display consistency
+    if (mbPerSecond > 99.9) {
+      return "99.9M";
     }
-    const display = Math.round(value).toString();
-    return display + units[unitIndex];
+    return mbPerSecond.toFixed(1) + "M";
   }
 
   // -------------------------------------------------------
