@@ -205,7 +205,7 @@ Rectangle {
       property color statColor: Color.mPrimary // Color based on warning/critical state
 
       width: miniGaugeWidth
-      height: iconSize
+      height: iconSize + 2
       radius: width / 2
       color: Color.mOutline
 

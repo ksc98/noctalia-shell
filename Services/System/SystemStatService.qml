@@ -862,6 +862,7 @@ Singleton {
     if (!cpuLine.startsWith('cpu '))
       return;
     const parts = cpuLine.split(/\s+/);
+    // Note: guest/guest_nice are already counted in user/nice, so exclude them
     const stats = {
       "user": parseInt(parts[1]) || 0,
       "nice": parseInt(parts[2]) || 0,
@@ -870,16 +871,14 @@ Singleton {
       "iowait": parseInt(parts[5]) || 0,
       "irq": parseInt(parts[6]) || 0,
       "softirq": parseInt(parts[7]) || 0,
-      "steal": parseInt(parts[8]) || 0,
-      "guest": parseInt(parts[9]) || 0,
-      "guestNice": parseInt(parts[10]) || 0
+      "steal": parseInt(parts[8]) || 0
     };
     const totalIdle = stats.idle + stats.iowait;
-    const total = Object.values(stats).reduce((sum, val) => sum + val, 0);
+    const total = stats.user + stats.nice + stats.system + stats.idle + stats.iowait + stats.irq + stats.softirq + stats.steal;
 
     if (root.prevCpuStats) {
       const prevTotalIdle = root.prevCpuStats.idle + root.prevCpuStats.iowait;
-      const prevTotal = Object.values(root.prevCpuStats).reduce((sum, val) => sum + val, 0);
+      const prevTotal = root.prevCpuStats.user + root.prevCpuStats.nice + root.prevCpuStats.system + root.prevCpuStats.idle + root.prevCpuStats.iowait + root.prevCpuStats.irq + root.prevCpuStats.softirq + root.prevCpuStats.steal;
 
       const diffTotal = total - prevTotal;
       const diffIdle = totalIdle - prevTotalIdle;
@@ -902,6 +901,7 @@ Singleton {
       if (line.startsWith('cpu '))
         continue;
       const coreParts = line.split(/\s+/);
+      // Note: guest/guest_nice are already counted in user/nice, so exclude them
       const coreStats = {
         "user": parseInt(coreParts[1]) || 0,
         "nice": parseInt(coreParts[2]) || 0,
@@ -910,18 +910,16 @@ Singleton {
         "iowait": parseInt(coreParts[5]) || 0,
         "irq": parseInt(coreParts[6]) || 0,
         "softirq": parseInt(coreParts[7]) || 0,
-        "steal": parseInt(coreParts[8]) || 0,
-        "guest": parseInt(coreParts[9]) || 0,
-        "guestNice": parseInt(coreParts[10]) || 0
+        "steal": parseInt(coreParts[8]) || 0
       };
       const coreIndex = newCoreStats.length;
       const coreTotalIdle = coreStats.idle + coreStats.iowait;
-      const coreTotal = Object.values(coreStats).reduce((sum, val) => sum + val, 0);
+      const coreTotal = coreStats.user + coreStats.nice + coreStats.system + coreStats.idle + coreStats.iowait + coreStats.irq + coreStats.softirq + coreStats.steal;
 
       if (root.prevCoreStats && root.prevCoreStats[coreIndex]) {
         const prevCore = root.prevCoreStats[coreIndex];
         const prevCoreTotalIdle = prevCore.idle + prevCore.iowait;
-        const prevCoreTotal = Object.values(prevCore).reduce((sum, val) => sum + val, 0);
+        const prevCoreTotal = prevCore.user + prevCore.nice + prevCore.system + prevCore.idle + prevCore.iowait + prevCore.irq + prevCore.softirq + prevCore.steal;
         const diffCoreTotal = coreTotal - prevCoreTotal;
         const diffCoreIdle = coreTotalIdle - prevCoreTotalIdle;
         if (diffCoreTotal > 0) {
