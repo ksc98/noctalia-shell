@@ -116,6 +116,8 @@ Singleton {
   property var prevCpuStats: null
   property var prevCoreStats: []  // Per-core previous stats
   property var coreUsages: []     // Per-core usage percentages (0-100)
+  property var coreUserUsages: [] // Per-core user CPU usage (0-100)
+  property var coreSystemUsages: [] // Per-core system/kernel CPU usage (0-100)
 
   // Internal state for network speed calculation
   // Previous Bytes need to be stored as 'real' as they represent the total of bytes transfered
@@ -893,6 +895,8 @@ Singleton {
     // Parse per-core stats (cpu0, cpu1, cpu2, ...)
     const newCoreStats = [];
     const newCoreUsages = [];
+    const newCoreUserUsages = [];
+    const newCoreSystemUsages = [];
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
       if (!line.startsWith('cpu'))
@@ -913,27 +917,38 @@ Singleton {
         "steal": parseInt(coreParts[8]) || 0
       };
       const coreIndex = newCoreStats.length;
-      const coreTotalIdle = coreStats.idle + coreStats.iowait;
       const coreTotal = coreStats.user + coreStats.nice + coreStats.system + coreStats.idle + coreStats.iowait + coreStats.irq + coreStats.softirq + coreStats.steal;
 
       if (root.prevCoreStats && root.prevCoreStats[coreIndex]) {
         const prevCore = root.prevCoreStats[coreIndex];
-        const prevCoreTotalIdle = prevCore.idle + prevCore.iowait;
         const prevCoreTotal = prevCore.user + prevCore.nice + prevCore.system + prevCore.idle + prevCore.iowait + prevCore.irq + prevCore.softirq + prevCore.steal;
         const diffCoreTotal = coreTotal - prevCoreTotal;
-        const diffCoreIdle = coreTotalIdle - prevCoreTotalIdle;
         if (diffCoreTotal > 0) {
-          newCoreUsages.push(((diffCoreTotal - diffCoreIdle) / diffCoreTotal) * 100);
+          // User time = user + nice
+          const diffUser = (coreStats.user + coreStats.nice) - (prevCore.user + prevCore.nice);
+          // System time = system + irq + softirq
+          const diffSystem = (coreStats.system + coreStats.irq + coreStats.softirq) - (prevCore.system + prevCore.irq + prevCore.softirq);
+          const userPct = (diffUser / diffCoreTotal) * 100;
+          const systemPct = (diffSystem / diffCoreTotal) * 100;
+          newCoreUsages.push(userPct + systemPct);
+          newCoreUserUsages.push(userPct);
+          newCoreSystemUsages.push(systemPct);
         } else {
           newCoreUsages.push(0);
+          newCoreUserUsages.push(0);
+          newCoreSystemUsages.push(0);
         }
       } else {
         newCoreUsages.push(0);
+        newCoreUserUsages.push(0);
+        newCoreSystemUsages.push(0);
       }
       newCoreStats.push(coreStats);
     }
     root.prevCoreStats = newCoreStats;
     root.coreUsages = newCoreUsages;
+    root.coreUserUsages = newCoreUserUsages;
+    root.coreSystemUsages = newCoreSystemUsages;
   }
 
   // -------------------------------------------------------

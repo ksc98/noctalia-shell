@@ -52,7 +52,7 @@ Rectangle {
   readonly property bool showDiskUsage: (widgetSettings.showDiskUsage !== undefined) ? widgetSettings.showDiskUsage : widgetMetadata.showDiskUsage
   readonly property bool showLoadAverage: (widgetSettings.showLoadAverage !== undefined) ? widgetSettings.showLoadAverage : widgetMetadata.showLoadAverage
   readonly property string diskPath: (widgetSettings.diskPath !== undefined) ? widgetSettings.diskPath : widgetMetadata.diskPath
-  readonly property string fontFamily: useMonospaceFont ? "SF Mono" : "SF Pro Text"
+  readonly property string fontFamily: useMonospaceFont ? Settings.data.ui.fontFixed : Settings.data.ui.fontDefault
 
   readonly property real iconSize: Style.toOdd(Style.capsuleHeight * 0.48)
   readonly property int itemSpacing: 5
@@ -205,7 +205,7 @@ Rectangle {
       property color statColor: Color.mPrimary // Color based on warning/critical state
 
       width: miniGaugeWidth
-      height: iconSize + 2
+      height: iconSize
       radius: width / 2
       color: Color.mOutline
 
@@ -311,52 +311,148 @@ Rectangle {
           }
         }
 
-        // CPU Core Chart (per-core usage bars)
+        // CPU Core Chart (per-core usage bars) - 2 rows: 0-15 top, 16-31 bottom
         Item {
           id: cpuCoreChartContainer
-          readonly property real chartHeight: Style.capsuleHeight * 0.75
-          implicitWidth: coreChartRow.implicitWidth
-          implicitHeight: chartHeight
+          readonly property int coreCount: SystemStatService.coreUsages.length
+          readonly property int halfCount: Math.ceil(coreCount / 2)
+          readonly property real rowHeight: (Style.capsuleHeight * 0.85 - 2) / 2  // 2px gap between rows
+          readonly property real barWidth: 3
+          implicitWidth: halfCount * barWidth + (halfCount - 1) * 1  // bars + spacing
+          implicitHeight: rowHeight * 2 + 2  // two rows + gap
           Layout.alignment: Qt.AlignCenter
           Layout.row: 0
           Layout.column: 1
-          visible: showCpuCoreChart && SystemStatService.coreUsages.length > 0
+          visible: showCpuCoreChart && coreCount > 0
 
-          Row {
-            id: coreChartRow
+          Column {
             anchors.centerIn: parent
-            spacing: 1
-            height: cpuCoreChartContainer.chartHeight
+            spacing: 2
 
-            Repeater {
-              model: SystemStatService.coreUsages
+            // Top row: cores 0 to halfCount-1
+            Row {
+              spacing: 1
+              height: cpuCoreChartContainer.rowHeight
 
-              Rectangle {
-                width: Math.max(2, Math.round(iconSize * 0.12))
-                height: parent.height
-                radius: width / 2
-                color: Color.mOutline
+              Repeater {
+                model: cpuCoreChartContainer.halfCount
 
                 Rectangle {
-                  property real fillHeight: parent.height * Math.min(1, Math.max(0, modelData / 100))
-                  width: parent.width
-                  height: fillHeight
-                  radius: parent.radius
-                  color: {
-                    const usage = modelData || 0;
-                    if (usage >= Settings.data.systemMonitor.cpuCriticalThreshold)
-                      return SystemStatService.criticalColor;
-                    if (usage >= Settings.data.systemMonitor.cpuWarningThreshold)
-                      return SystemStatService.warningColor;
-                    return SystemStatService.cpuColor;
-                  }
-                  anchors.bottom: parent.bottom
+                  width: cpuCoreChartContainer.barWidth
+                  height: parent.height
+                  radius: width / 2
+                  color: "transparent"
 
-                  Behavior on fillHeight {
-                    enabled: !Settings.data.general.animationDisabled
-                    NumberAnimation {
-                      duration: Style.animationNormal
-                      easing.type: Easing.OutCubic
+                  // System CPU (red) - bottom
+                  Rectangle {
+                    readonly property real systemUsage: SystemStatService.coreSystemUsages[index] || 0
+                    property real fillHeight: parent.height * Math.min(1, Math.max(0, systemUsage / 100))
+                    width: parent.width
+                    height: fillHeight
+                    radius: parent.radius
+                    color: "#ff5555"
+                    anchors.bottom: parent.bottom
+
+                    Behavior on fillHeight {
+                      enabled: !Settings.data.general.animationDisabled
+                      NumberAnimation {
+                        duration: Style.animationNormal
+                        easing.type: Easing.OutCubic
+                      }
+                    }
+                  }
+
+                  // User CPU (blue) - on top of system
+                  Rectangle {
+                    readonly property real userUsage: SystemStatService.coreUserUsages[index] || 0
+                    readonly property real systemUsage: SystemStatService.coreSystemUsages[index] || 0
+                    property real systemHeight: parent.height * Math.min(1, Math.max(0, systemUsage / 100))
+                    property real fillHeight: parent.height * Math.min(1, Math.max(0, userUsage / 100))
+                    width: parent.width
+                    height: fillHeight
+                    radius: parent.radius
+                    color: "#5599ff"
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: systemHeight
+
+                    Behavior on fillHeight {
+                      enabled: !Settings.data.general.animationDisabled
+                      NumberAnimation {
+                        duration: Style.animationNormal
+                        easing.type: Easing.OutCubic
+                      }
+                    }
+                    Behavior on anchors.bottomMargin {
+                      enabled: !Settings.data.general.animationDisabled
+                      NumberAnimation {
+                        duration: Style.animationNormal
+                        easing.type: Easing.OutCubic
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            // Bottom row: cores halfCount to coreCount-1
+            Row {
+              spacing: 1
+              height: cpuCoreChartContainer.rowHeight
+
+              Repeater {
+                model: cpuCoreChartContainer.coreCount - cpuCoreChartContainer.halfCount
+
+                Rectangle {
+                  width: cpuCoreChartContainer.barWidth
+                  height: parent.height
+                  radius: width / 2
+                  color: "transparent"
+
+                  // System CPU (red) - bottom
+                  Rectangle {
+                    readonly property real systemUsage: SystemStatService.coreSystemUsages[cpuCoreChartContainer.halfCount + index] || 0
+                    property real fillHeight: parent.height * Math.min(1, Math.max(0, systemUsage / 100))
+                    width: parent.width
+                    height: fillHeight
+                    radius: parent.radius
+                    color: "#ff5555"
+                    anchors.bottom: parent.bottom
+
+                    Behavior on fillHeight {
+                      enabled: !Settings.data.general.animationDisabled
+                      NumberAnimation {
+                        duration: Style.animationNormal
+                        easing.type: Easing.OutCubic
+                      }
+                    }
+                  }
+
+                  // User CPU (blue) - on top of system
+                  Rectangle {
+                    readonly property real userUsage: SystemStatService.coreUserUsages[cpuCoreChartContainer.halfCount + index] || 0
+                    readonly property real systemUsage: SystemStatService.coreSystemUsages[cpuCoreChartContainer.halfCount + index] || 0
+                    property real systemHeight: parent.height * Math.min(1, Math.max(0, systemUsage / 100))
+                    property real fillHeight: parent.height * Math.min(1, Math.max(0, userUsage / 100))
+                    width: parent.width
+                    height: fillHeight
+                    radius: parent.radius
+                    color: "#5599ff"
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: systemHeight
+
+                    Behavior on fillHeight {
+                      enabled: !Settings.data.general.animationDisabled
+                      NumberAnimation {
+                        duration: Style.animationNormal
+                        easing.type: Easing.OutCubic
+                      }
+                    }
+                    Behavior on anchors.bottomMargin {
+                      enabled: !Settings.data.general.animationDisabled
+                      NumberAnimation {
+                        duration: Style.animationNormal
+                        easing.type: Easing.OutCubic
+                      }
                     }
                   }
                 }
