@@ -481,6 +481,13 @@ Singleton {
       property string warningColor: ""
       property string criticalColor: ""
       property string externalMonitor: "resources || missioncenter || jdsystemmonitor || corestats || system-monitoring-center || gnome-system-monitor || plasma-systemmonitor || mate-system-monitor || ukui-system-monitor || deepin-system-monitor || pantheon-system-monitor"
+      // Custom sensor configuration for coolant temp and CPU wattage
+      property string coolantSensorChip: ""
+      property string coolantSensorLabel: ""
+      property string coolantSensorValueKey: ""
+      property string cpuWattSensorChip: ""
+      property string cpuWattSensorLabel: ""
+      property string cpuWattSensorValueKey: ""
     }
 
     // dock

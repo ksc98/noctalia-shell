@@ -30,6 +30,10 @@ Singleton {
   property var diskSizeGb: ({}) // Total size in GB per mount point
   property real rxSpeed: 0
   property real txSpeed: 0
+  property real coolantTemp: 0
+  property real cpuWatt: 0
+  // Cache resolved chip names to avoid matching on every refresh
+  property var sensorChipCache: ({})
   property real zfsArcSizeKb: 0 // ZFS ARC cache size in KB
   property real zfsArcCminKb: 0 // ZFS ARC minimum (non-reclaimable) size in KB
   property real loadAvg1: 0
@@ -76,6 +80,8 @@ Singleton {
   readonly property bool gpuCritical: gpuAvailable && gpuTemp >= gpuCriticalThreshold
   readonly property bool memWarning: memPercent >= memWarningThreshold
   readonly property bool memCritical: memPercent >= memCriticalThreshold
+  readonly property bool coolantWarning: coolantTemp >= tempWarningThreshold
+  readonly property bool coolantCritical: coolantTemp >= tempCriticalThreshold
 
   // Helper functions for disk (disk path is dynamic)
   function isDiskWarning(diskPath) {
@@ -91,6 +97,7 @@ Singleton {
   readonly property color tempColor: tempCritical ? criticalColor : (tempWarning ? warningColor : Color.mPrimary)
   readonly property color gpuColor: gpuCritical ? criticalColor : (gpuWarning ? warningColor : Color.mPrimary)
   readonly property color memColor: memCritical ? criticalColor : (memWarning ? warningColor : Color.mPrimary)
+  readonly property color coolantColor: coolantCritical ? criticalColor : (coolantWarning ? warningColor : Color.mPrimary)
 
   function getDiskColor(diskPath) {
     return isDiskCritical(diskPath) ? criticalColor : (isDiskWarning(diskPath) ? warningColor : Color.mPrimary);
@@ -107,6 +114,8 @@ Singleton {
 
   // Internal state for CPU calculation
   property var prevCpuStats: null
+  property var prevCoreStats: []  // Per-core previous stats
+  property var coreUsages: []     // Per-core usage percentages (0-100)
 
   // Internal state for network speed calculation
   // Previous Bytes need to be stored as 'real' as they represent the total of bytes transfered
@@ -265,7 +274,13 @@ Singleton {
         restart();
       }
     }
-    onTriggered: updateCpuTemperature()
+    onTriggered: {
+      updateCpuTemperature();
+      // Also poll configured sensors (coolant temp, CPU wattage)
+      if (shouldReadSensorProcess() && !sensorsProcess.running) {
+        sensorsProcess.running = true;
+      }
+    }
   }
 
   // Timer for memory stats
@@ -414,6 +429,18 @@ Singleton {
     stdout: StdioCollector {
       onStreamFinished: {
         root.nproc = parseInt(text.trim());
+      }
+    }
+  }
+
+  // Process to fetch coolant temperature and CPU wattage via sensors -j
+  Process {
+    id: sensorsProcess
+    command: ["sensors", "-j"]
+    running: false
+    stdout: StdioCollector {
+      onStreamFinished: {
+        root.processSensorData(text);
       }
     }
   }
@@ -723,6 +750,107 @@ Singleton {
   }
 
   // -------------------------------------------------------
+  // Process sensor data from sensors -j for coolant temp and CPU wattage
+  function processSensorData(rawText) {
+    if (!rawText)
+      return;
+    let data = null;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      Logger.w("SystemStat", `Failed to parse sensor data: ${e}`);
+      return;
+    }
+
+    const coolantValue = readConfiguredSensorValue(data, Settings.data.systemMonitor.coolantSensorChip, Settings.data.systemMonitor.coolantSensorLabel, Settings.data.systemMonitor.coolantSensorValueKey);
+    if (coolantValue !== null) {
+      root.coolantTemp = coolantValue;
+    }
+
+    const wattValue = readConfiguredSensorValue(data, Settings.data.systemMonitor.cpuWattSensorChip, Settings.data.systemMonitor.cpuWattSensorLabel, Settings.data.systemMonitor.cpuWattSensorValueKey);
+    if (wattValue !== null) {
+      root.cpuWatt = wattValue;
+    }
+  }
+
+  function readConfiguredSensorValue(data, chipName, sensorName, valueKey) {
+    if (!data || !chipName || !sensorName)
+      return null;
+    const chipKey = resolveSensorChipKey(data, chipName);
+    if (!chipKey)
+      return null;
+    const chipData = data[chipKey];
+    const sensorData = chipData[sensorName];
+    if (!sensorData)
+      return null;
+    if (valueKey && sensorData[valueKey] !== undefined) {
+      return Number(sensorData[valueKey]) || 0;
+    }
+    for (const key in sensorData) {
+      if (Object.prototype.hasOwnProperty.call(sensorData, key)) {
+        const value = sensorData[key];
+        if (typeof value === "number" && key.endsWith("_input")) {
+          return Number(value) || 0;
+        }
+      }
+    }
+    return null;
+  }
+
+  function resolveSensorChipKey(data, chipName) {
+    if (!data || !chipName)
+      return "";
+
+    const cachedKey = root.sensorChipCache[chipName];
+    if (cachedKey) {
+      if (data[cachedKey]) {
+        return cachedKey;
+      }
+      delete root.sensorChipCache[chipName];
+    }
+
+    if (data[chipName]) {
+      root.sensorChipCache[chipName] = chipName;
+      return chipName;
+    }
+
+    const lowerChipName = chipName.toLowerCase();
+    for (const key in data) {
+      if (key.toLowerCase() === lowerChipName) {
+        root.sensorChipCache[chipName] = key;
+        return key;
+      }
+    }
+
+    const chipSegments = chipName.split("-");
+    for (let len = chipSegments.length - 1; len > 0; len--) {
+      const prefix = chipSegments.slice(0, len).join("-");
+      if (!prefix)
+        continue;
+      const prefixWithDash = (prefix + "-").toLowerCase();
+      for (const key in data) {
+        if (key.toLowerCase().startsWith(prefixWithDash)) {
+          if (!root.sensorChipCache[chipName]) {
+            Logger.w("SystemStat", `Matched sensor chip "${chipName}" to "${key}"`);
+          }
+          root.sensorChipCache[chipName] = key;
+          return key;
+        }
+      }
+    }
+
+    return "";
+  }
+
+  function shouldReadSensorProcess() {
+    return hasConfiguredSensor(Settings.data.systemMonitor.coolantSensorChip, Settings.data.systemMonitor.coolantSensorLabel) || hasConfiguredSensor(Settings.data.systemMonitor.cpuWattSensorChip, Settings.data.systemMonitor.cpuWattSensorLabel);
+  }
+
+  function hasConfiguredSensor(chip, label) {
+    return !!(chip && label);
+  }
+
+  // -------------------------------------------------------
   // Calculate CPU usage from /proc/stat
   function calculateCpuUsage(text) {
     if (!text)
@@ -762,6 +890,52 @@ Singleton {
     }
 
     root.prevCpuStats = stats;
+
+    // Parse per-core stats (cpu0, cpu1, cpu2, ...)
+    const newCoreStats = [];
+    const newCoreUsages = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.startsWith('cpu'))
+        break;
+      // Skip if it's the total line (has space after 'cpu')
+      if (line.startsWith('cpu '))
+        continue;
+      const coreParts = line.split(/\s+/);
+      const coreStats = {
+        "user": parseInt(coreParts[1]) || 0,
+        "nice": parseInt(coreParts[2]) || 0,
+        "system": parseInt(coreParts[3]) || 0,
+        "idle": parseInt(coreParts[4]) || 0,
+        "iowait": parseInt(coreParts[5]) || 0,
+        "irq": parseInt(coreParts[6]) || 0,
+        "softirq": parseInt(coreParts[7]) || 0,
+        "steal": parseInt(coreParts[8]) || 0,
+        "guest": parseInt(coreParts[9]) || 0,
+        "guestNice": parseInt(coreParts[10]) || 0
+      };
+      const coreIndex = newCoreStats.length;
+      const coreTotalIdle = coreStats.idle + coreStats.iowait;
+      const coreTotal = Object.values(coreStats).reduce((sum, val) => sum + val, 0);
+
+      if (root.prevCoreStats && root.prevCoreStats[coreIndex]) {
+        const prevCore = root.prevCoreStats[coreIndex];
+        const prevCoreTotalIdle = prevCore.idle + prevCore.iowait;
+        const prevCoreTotal = Object.values(prevCore).reduce((sum, val) => sum + val, 0);
+        const diffCoreTotal = coreTotal - prevCoreTotal;
+        const diffCoreIdle = coreTotalIdle - prevCoreTotalIdle;
+        if (diffCoreTotal > 0) {
+          newCoreUsages.push(((diffCoreTotal - diffCoreIdle) / diffCoreTotal) * 100);
+        } else {
+          newCoreUsages.push(0);
+        }
+      } else {
+        newCoreUsages.push(0);
+      }
+      newCoreStats.push(coreStats);
+    }
+    root.prevCoreStats = newCoreStats;
+    root.coreUsages = newCoreUsages;
   }
 
   // -------------------------------------------------------
