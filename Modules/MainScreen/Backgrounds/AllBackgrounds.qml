@@ -175,5 +175,15 @@ Item {
         }
       }
     }
+
+    // 1px bottom border line for bar
+    Rectangle {
+      visible: root.bar && Settings.data.bar.showBottomBorder && BarService.isVisible
+      x: root.bar ? root.bar.x : 0
+      y: root.bar ? (root.bar.y + root.bar.height) : 0
+      width: root.bar ? root.bar.width : 0
+      height: 1
+      color: Color.mShadow
+    }
   }
 }
