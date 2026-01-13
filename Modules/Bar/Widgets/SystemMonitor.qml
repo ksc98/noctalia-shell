@@ -453,7 +453,8 @@ Rectangle {
             applyUiScale: false
             x: Style.pixelAlignCenter(parent.width, width)
             y: Style.pixelAlignCenter(parent.height, contentHeight)
-            color: (tempWarning || tempCritical) ? SystemStatService.tempColor : Color.mOnSurface
+            // Gradient from green (60°C) to red (80°C)
+            color: Qt.hsla(Math.min(120, Math.max(0, (1 - (SystemStatService.cpuTemp - 60) / 20) * 120)) / 360, 0.7, 0.5, 1)
           }
         }
 
@@ -467,7 +468,8 @@ Rectangle {
           Layout.alignment: Qt.AlignCenter
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
-          color: (tempWarning || tempCritical) ? SystemStatService.tempColor : textColor
+          // Gradient from green (60°C) to red (80°C)
+          color: Qt.hsla(Math.min(120, Math.max(0, (1 - (SystemStatService.cpuTemp - 60) / 20) * 120)) / 360, 0.7, 0.5, 1)
           Layout.row: isBarVertical ? 0 : 0
           Layout.column: isBarVertical ? 0 : 1
         }
