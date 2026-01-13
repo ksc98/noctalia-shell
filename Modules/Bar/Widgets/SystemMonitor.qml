@@ -33,7 +33,7 @@ Rectangle {
   }
 
   readonly property string barPosition: Settings.data.bar.position
-  readonly property bool isVertical: barPosition === "left" || barPosition === "right"
+  readonly property bool isBarVertical: barPosition === "left" || barPosition === "right"
 
   readonly property bool compactMode: widgetSettings.compactMode !== undefined ? widgetSettings.compactMode : widgetMetadata.compactMode
   readonly property bool usePrimaryColor: widgetSettings.usePrimaryColor !== undefined ? widgetSettings.usePrimaryColor : widgetMetadata.usePrimaryColor
@@ -57,7 +57,7 @@ Rectangle {
   readonly property real iconSize: Style.toOdd(Style.capsuleHeight * 0.48)
   readonly property int itemSpacing: 5
   readonly property real miniGaugeWidth: Math.max(3, Style.toOdd(root.iconSize * 0.25))
-  readonly property real textSize: Math.max(7, iconSize * barScaling * 0.6 * (isVertical ? 0.85 : 1.0))
+  readonly property real textSize: Math.max(7, iconSize * barScaling * 0.6 * (isBarVertical ? 0.85 : 1.0))
 
   function openExternalMonitor() {
     Quickshell.execDetached(["sh", "-c", Settings.data.systemMonitor.externalMonitor]);
@@ -123,8 +123,8 @@ Rectangle {
   readonly property bool diskCritical: showDiskUsage && SystemStatService.isDiskCritical(diskPath)
 
   anchors.centerIn: parent
-  implicitWidth: isVertical ? Style.capsuleHeight : Math.round(mainGrid.implicitWidth + Style.marginM * 2)
-  implicitHeight: isVertical ? Math.round(mainGrid.implicitHeight + Style.marginM * 2) : Style.capsuleHeight
+  implicitWidth: isBarVertical ? Style.capsuleHeight : Math.round(mainGrid.implicitWidth + Style.marginM * 2)
+  implicitHeight: isBarVertical ? Math.round(mainGrid.implicitHeight + Style.marginM * 2) : Style.capsuleHeight
   radius: Style.radiusM
   color: Style.capsuleColor
   border.color: Style.capsuleBorderColor
@@ -239,28 +239,28 @@ Rectangle {
   GridLayout {
     id: mainGrid
     anchors.centerIn: parent
-    flow: isVertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
-    rows: isVertical ? -1 : 1
-    columns: isVertical ? 1 : -1
-    rowSpacing: isVertical ? Style.marginL : 0
-    columnSpacing: isVertical ? 0 : (Style.marginM)
+    flow: isBarVertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+    rows: isBarVertical ? -1 : 1
+    columns: isBarVertical ? 1 : -1
+    rowSpacing: isBarVertical ? Style.marginL : 0
+    columnSpacing: isBarVertical ? 0 : (Style.marginM)
 
     // CPU Usage Component
     Item {
       id: cpuUsageContainer
       implicitWidth: cpuUsageContent.implicitWidth
       implicitHeight: cpuUsageContent.implicitHeight
-      Layout.preferredWidth: isVertical ? root.width : implicitWidth
+      Layout.preferredWidth: isBarVertical ? root.width : implicitWidth
       Layout.preferredHeight: compactMode ? implicitHeight : Style.capsuleHeight
-      Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+      Layout.alignment: isBarVertical ? Qt.AlignHCenter : Qt.AlignVCenter
       visible: showCpuUsage
 
       GridLayout {
         id: cpuUsageContent
         anchors.centerIn: parent
-        flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
-        rows: (isVertical && !compactMode) ? 2 : 1
-        columns: (isVertical && !compactMode) ? 1 : 2
+        flow: (isBarVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: (isBarVertical && !compactMode) ? 2 : 1
+        columns: (isBarVertical && !compactMode) ? 1 : 2
         rowSpacing: Style.marginXXS
         columnSpacing: itemSpacing
 
@@ -268,7 +268,7 @@ Rectangle {
           Layout.preferredWidth: iconSize
           Layout.preferredHeight: compactMode ? iconSize : Style.capsuleHeight
           Layout.alignment: Qt.AlignCenter
-          Layout.row: (isVertical && !compactMode) ? 1 : 0
+          Layout.row: (isBarVertical && !compactMode) ? 1 : 0
           Layout.column: 0
 
           NIcon {
@@ -292,8 +292,8 @@ Rectangle {
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
           color: (cpuWarning || cpuCritical) ? SystemStatService.cpuColor : textColor
-          Layout.row: isVertical ? 0 : 0
-          Layout.column: isVertical ? 0 : 1
+          Layout.row: isBarVertical ? 0 : 0
+          Layout.column: isBarVertical ? 0 : 1
         }
 
         // Compact mode (hide if core chart is shown)
@@ -426,17 +426,17 @@ Rectangle {
       id: cpuTempContainer
       implicitWidth: cpuTempContent.implicitWidth
       implicitHeight: cpuTempContent.implicitHeight
-      Layout.preferredWidth: isVertical ? root.width : implicitWidth
+      Layout.preferredWidth: isBarVertical ? root.width : implicitWidth
       Layout.preferredHeight: compactMode ? implicitHeight : Style.capsuleHeight
-      Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+      Layout.alignment: isBarVertical ? Qt.AlignHCenter : Qt.AlignVCenter
       visible: showCpuTemp
 
       GridLayout {
         id: cpuTempContent
         anchors.centerIn: parent
-        flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
-        rows: (isVertical && !compactMode) ? 2 : 1
-        columns: (isVertical && !compactMode) ? 1 : 2
+        flow: (isBarVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: (isBarVertical && !compactMode) ? 2 : 1
+        columns: (isBarVertical && !compactMode) ? 1 : 2
         rowSpacing: Style.marginXXS
         columnSpacing: itemSpacing
 
@@ -444,7 +444,7 @@ Rectangle {
           Layout.preferredWidth: iconSize
           Layout.preferredHeight: compactMode ? iconSize : Style.capsuleHeight
           Layout.alignment: Qt.AlignCenter
-          Layout.row: (isVertical && !compactMode) ? 1 : 0
+          Layout.row: (isBarVertical && !compactMode) ? 1 : 0
           Layout.column: 0
 
           NIcon {
@@ -468,8 +468,8 @@ Rectangle {
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
           color: (tempWarning || tempCritical) ? SystemStatService.tempColor : textColor
-          Layout.row: isVertical ? 0 : 0
-          Layout.column: isVertical ? 0 : 1
+          Layout.row: isBarVertical ? 0 : 0
+          Layout.column: isBarVertical ? 0 : 1
         }
 
         // Compact mode, mini gauge (to the right of icon)
@@ -494,17 +494,17 @@ Rectangle {
       id: gpuTempContainer
       implicitWidth: gpuTempContent.implicitWidth
       implicitHeight: gpuTempContent.implicitHeight
-      Layout.preferredWidth: isVertical ? root.width : implicitWidth
+      Layout.preferredWidth: isBarVertical ? root.width : implicitWidth
       Layout.preferredHeight: compactMode ? implicitHeight : Style.capsuleHeight
-      Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+      Layout.alignment: isBarVertical ? Qt.AlignHCenter : Qt.AlignVCenter
       visible: showGpuTemp && SystemStatService.gpuAvailable
 
       GridLayout {
         id: gpuTempContent
         anchors.centerIn: parent
-        flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
-        rows: (isVertical && !compactMode) ? 2 : 1
-        columns: (isVertical && !compactMode) ? 1 : 2
+        flow: (isBarVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: (isBarVertical && !compactMode) ? 2 : 1
+        columns: (isBarVertical && !compactMode) ? 1 : 2
         rowSpacing: Style.marginXXS
         columnSpacing: itemSpacing
 
@@ -512,7 +512,7 @@ Rectangle {
           Layout.preferredWidth: iconSize
           Layout.preferredHeight: compactMode ? iconSize : Style.capsuleHeight
           Layout.alignment: Qt.AlignCenter
-          Layout.row: (isVertical && !compactMode) ? 1 : 0
+          Layout.row: (isBarVertical && !compactMode) ? 1 : 0
           Layout.column: 0
 
           NIcon {
@@ -536,8 +536,8 @@ Rectangle {
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
           color: (gpuWarning || gpuCritical) ? SystemStatService.gpuColor : textColor
-          Layout.row: isVertical ? 0 : 0
-          Layout.column: isVertical ? 0 : 1
+          Layout.row: isBarVertical ? 0 : 0
+          Layout.column: isBarVertical ? 0 : 1
         }
 
         // Compact mode
@@ -562,17 +562,17 @@ Rectangle {
       id: loadAvgContainer
       implicitWidth: loadAvgContent.implicitWidth
       implicitHeight: loadAvgContent.implicitHeight
-      Layout.preferredWidth: isVertical ? root.width : implicitWidth
+      Layout.preferredWidth: isBarVertical ? root.width : implicitWidth
       Layout.preferredHeight: compactMode ? implicitHeight : Style.capsuleHeight
-      Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+      Layout.alignment: isBarVertical ? Qt.AlignHCenter : Qt.AlignVCenter
       visible: showLoadAverage && SystemStatService.nproc > 0 && SystemStatService.loadAvg1 > 0
 
       GridLayout {
         id: loadAvgContent
         anchors.centerIn: parent
-        flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
-        rows: (isVertical && !compactMode) ? 2 : 1
-        columns: (isVertical && !compactMode) ? 1 : 2
+        flow: (isBarVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: (isBarVertical && !compactMode) ? 2 : 1
+        columns: (isBarVertical && !compactMode) ? 1 : 2
         rowSpacing: Style.marginXXS
         columnSpacing: compactMode ? 3 : Style.marginXS
 
@@ -580,7 +580,7 @@ Rectangle {
           Layout.preferredWidth: iconSize
           Layout.preferredHeight: compactMode ? iconSize : Style.capsuleHeight
           Layout.alignment: Qt.AlignCenter
-          Layout.row: (isVertical && !compactMode) ? 1 : 0
+          Layout.row: (isBarVertical && !compactMode) ? 1 : 0
           Layout.column: 0
 
           NIcon {
@@ -604,8 +604,8 @@ Rectangle {
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
           color: textColor
-          Layout.row: isVertical ? 0 : 0
-          Layout.column: isVertical ? 0 : 1
+          Layout.row: isBarVertical ? 0 : 0
+          Layout.column: isBarVertical ? 0 : 1
         }
 
         // Compact mode
@@ -630,17 +630,17 @@ Rectangle {
       id: coolantTempContainer
       implicitWidth: coolantTempContent.implicitWidth
       implicitHeight: coolantTempContent.implicitHeight
-      Layout.preferredWidth: isVertical ? root.width : implicitWidth
+      Layout.preferredWidth: isBarVertical ? root.width : implicitWidth
       Layout.preferredHeight: compactMode ? implicitHeight : Style.capsuleHeight
-      Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+      Layout.alignment: isBarVertical ? Qt.AlignHCenter : Qt.AlignVCenter
       visible: showCoolantTemp
 
       GridLayout {
         id: coolantTempContent
         anchors.centerIn: parent
-        flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
-        rows: (isVertical && !compactMode) ? 2 : 1
-        columns: (isVertical && !compactMode) ? 1 : 2
+        flow: (isBarVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: (isBarVertical && !compactMode) ? 2 : 1
+        columns: (isBarVertical && !compactMode) ? 1 : 2
         rowSpacing: Style.marginXXS
         columnSpacing: compactMode ? 3 : Style.marginXS
 
@@ -648,7 +648,7 @@ Rectangle {
           Layout.preferredWidth: iconSize
           Layout.preferredHeight: compactMode ? iconSize : Style.capsuleHeight
           Layout.alignment: Qt.AlignCenter
-          Layout.row: (isVertical && !compactMode) ? 1 : 0
+          Layout.row: (isBarVertical && !compactMode) ? 1 : 0
           Layout.column: 0
 
           NIcon {
@@ -672,8 +672,8 @@ Rectangle {
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
           color: (coolantWarning || coolantCritical) ? SystemStatService.coolantColor : textColor
-          Layout.row: isVertical ? 0 : 0
-          Layout.column: isVertical ? 0 : 1
+          Layout.row: isBarVertical ? 0 : 0
+          Layout.column: isBarVertical ? 0 : 1
         }
 
         // Compact mode gauge (only when coolantUseCompactMode is true)
@@ -698,17 +698,17 @@ Rectangle {
       id: cpuWattContainer
       implicitWidth: cpuWattContent.implicitWidth
       implicitHeight: cpuWattContent.implicitHeight
-      Layout.preferredWidth: isVertical ? root.width : implicitWidth
+      Layout.preferredWidth: isBarVertical ? root.width : implicitWidth
       Layout.preferredHeight: compactMode ? implicitHeight : Style.capsuleHeight
-      Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+      Layout.alignment: isBarVertical ? Qt.AlignHCenter : Qt.AlignVCenter
       visible: showCpuWatt
 
       GridLayout {
         id: cpuWattContent
         anchors.centerIn: parent
-        flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
-        rows: (isVertical && !compactMode) ? 2 : 1
-        columns: (isVertical && !compactMode) ? 1 : 2
+        flow: (isBarVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: (isBarVertical && !compactMode) ? 2 : 1
+        columns: (isBarVertical && !compactMode) ? 1 : 2
         rowSpacing: Style.marginXXS
         columnSpacing: compactMode ? 3 : Style.marginXS
 
@@ -716,7 +716,7 @@ Rectangle {
           Layout.preferredWidth: iconSize
           Layout.preferredHeight: compactMode ? iconSize : Style.capsuleHeight
           Layout.alignment: Qt.AlignCenter
-          Layout.row: (isVertical && !compactMode) ? 1 : 0
+          Layout.row: (isBarVertical && !compactMode) ? 1 : 0
           Layout.column: 0
 
           NIcon {
@@ -746,8 +746,8 @@ Rectangle {
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
           color: textColor
-          Layout.row: isVertical ? 0 : 0
-          Layout.column: isVertical ? 0 : 1
+          Layout.row: isBarVertical ? 0 : 0
+          Layout.column: isBarVertical ? 0 : 1
         }
 
         // Compact mode - show as mini gauge (ratio based on typical max of 150W)
@@ -772,17 +772,17 @@ Rectangle {
       id: memoryContainer
       implicitWidth: memoryContent.implicitWidth
       implicitHeight: memoryContent.implicitHeight
-      Layout.preferredWidth: isVertical ? root.width : implicitWidth
+      Layout.preferredWidth: isBarVertical ? root.width : implicitWidth
       Layout.preferredHeight: compactMode ? implicitHeight : Style.capsuleHeight
-      Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+      Layout.alignment: isBarVertical ? Qt.AlignHCenter : Qt.AlignVCenter
       visible: showMemoryUsage
 
       GridLayout {
         id: memoryContent
         anchors.centerIn: parent
-        flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
-        rows: (isVertical && !compactMode) ? 2 : 1
-        columns: (isVertical && !compactMode) ? 1 : 2
+        flow: (isBarVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: (isBarVertical && !compactMode) ? 2 : 1
+        columns: (isBarVertical && !compactMode) ? 1 : 2
         rowSpacing: Style.marginXXS
         columnSpacing: itemSpacing
 
@@ -790,7 +790,7 @@ Rectangle {
           Layout.preferredWidth: iconSize
           Layout.preferredHeight: compactMode ? iconSize : Style.capsuleHeight
           Layout.alignment: Qt.AlignCenter
-          Layout.row: (isVertical && !compactMode) ? 1 : 0
+          Layout.row: (isBarVertical && !compactMode) ? 1 : 0
           Layout.column: 0
 
           NIcon {
@@ -814,8 +814,8 @@ Rectangle {
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
           color: (memWarning || memCritical) ? SystemStatService.memColor : textColor
-          Layout.row: isVertical ? 0 : 0
-          Layout.column: isVertical ? 0 : 1
+          Layout.row: isBarVertical ? 0 : 0
+          Layout.column: isBarVertical ? 0 : 1
         }
 
         // Compact mode
@@ -839,17 +839,17 @@ Rectangle {
     Item {
       implicitWidth: downloadContent.implicitWidth
       implicitHeight: downloadContent.implicitHeight
-      Layout.preferredWidth: isVertical ? root.width : implicitWidth
+      Layout.preferredWidth: isBarVertical ? root.width : implicitWidth
       Layout.preferredHeight: compactMode ? implicitHeight : Style.capsuleHeight
-      Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+      Layout.alignment: isBarVertical ? Qt.AlignHCenter : Qt.AlignVCenter
       visible: showNetworkStats
 
       GridLayout {
         id: downloadContent
         anchors.centerIn: parent
-        flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
-        rows: (isVertical && !compactMode) ? 2 : 1
-        columns: (isVertical && !compactMode) ? 1 : 2
+        flow: (isBarVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: (isBarVertical && !compactMode) ? 2 : 1
+        columns: (isBarVertical && !compactMode) ? 1 : 2
         rowSpacing: Style.marginXXS
         columnSpacing: itemSpacing
 
@@ -857,7 +857,7 @@ Rectangle {
           Layout.preferredWidth: iconSize
           Layout.preferredHeight: compactMode ? iconSize : Style.capsuleHeight
           Layout.alignment: Qt.AlignCenter
-          Layout.row: (isVertical && !compactMode) ? 1 : 0
+          Layout.row: (isBarVertical && !compactMode) ? 1 : 0
           Layout.column: 0
 
           NIcon {
@@ -872,7 +872,7 @@ Rectangle {
         // Text mode
         NText {
           visible: !compactMode
-          text: isVertical ? SystemStatService.formatCompactSpeed(SystemStatService.rxSpeed) : SystemStatService.formatSpeed(SystemStatService.rxSpeed)
+          text: isBarVertical ? SystemStatService.formatCompactSpeed(SystemStatService.rxSpeed) : SystemStatService.formatSpeed(SystemStatService.rxSpeed)
           family: fontFamily
           pointSize: Style.barFontSize
           applyUiScale: false
@@ -880,8 +880,8 @@ Rectangle {
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
           color: textColor
-          Layout.row: isVertical ? 0 : 0
-          Layout.column: isVertical ? 0 : 1
+          Layout.row: isBarVertical ? 0 : 0
+          Layout.column: isBarVertical ? 0 : 1
         }
 
         // Compact mode
@@ -904,17 +904,17 @@ Rectangle {
     Item {
       implicitWidth: uploadContent.implicitWidth
       implicitHeight: uploadContent.implicitHeight
-      Layout.preferredWidth: isVertical ? root.width : implicitWidth
+      Layout.preferredWidth: isBarVertical ? root.width : implicitWidth
       Layout.preferredHeight: compactMode ? implicitHeight : Style.capsuleHeight
-      Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+      Layout.alignment: isBarVertical ? Qt.AlignHCenter : Qt.AlignVCenter
       visible: showNetworkStats
 
       GridLayout {
         id: uploadContent
         anchors.centerIn: parent
-        flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
-        rows: (isVertical && !compactMode) ? 2 : 1
-        columns: (isVertical && !compactMode) ? 1 : 2
+        flow: (isBarVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: (isBarVertical && !compactMode) ? 2 : 1
+        columns: (isBarVertical && !compactMode) ? 1 : 2
         rowSpacing: Style.marginXXS
         columnSpacing: itemSpacing
 
@@ -922,7 +922,7 @@ Rectangle {
           Layout.preferredWidth: iconSize
           Layout.preferredHeight: compactMode ? iconSize : Style.capsuleHeight
           Layout.alignment: Qt.AlignCenter
-          Layout.row: (isVertical && !compactMode) ? 1 : 0
+          Layout.row: (isBarVertical && !compactMode) ? 1 : 0
           Layout.column: 0
 
           NIcon {
@@ -937,7 +937,7 @@ Rectangle {
         // Text mode
         NText {
           visible: !compactMode
-          text: isVertical ? SystemStatService.formatCompactSpeed(SystemStatService.txSpeed) : SystemStatService.formatSpeed(SystemStatService.txSpeed)
+          text: isBarVertical ? SystemStatService.formatCompactSpeed(SystemStatService.txSpeed) : SystemStatService.formatSpeed(SystemStatService.txSpeed)
           family: fontFamily
           pointSize: Style.barFontSize
           applyUiScale: false
@@ -945,8 +945,8 @@ Rectangle {
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
           color: textColor
-          Layout.row: isVertical ? 0 : 0
-          Layout.column: isVertical ? 0 : 1
+          Layout.row: isBarVertical ? 0 : 0
+          Layout.column: isBarVertical ? 0 : 1
         }
 
         // Compact mode
@@ -970,17 +970,17 @@ Rectangle {
       id: diskContainer
       implicitWidth: diskContent.implicitWidth
       implicitHeight: diskContent.implicitHeight
-      Layout.preferredWidth: isVertical ? root.width : implicitWidth
+      Layout.preferredWidth: isBarVertical ? root.width : implicitWidth
       Layout.preferredHeight: compactMode ? implicitHeight : Style.capsuleHeight
-      Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+      Layout.alignment: isBarVertical ? Qt.AlignHCenter : Qt.AlignVCenter
       visible: showDiskUsage
 
       GridLayout {
         id: diskContent
         anchors.centerIn: parent
-        flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
-        rows: (isVertical && !compactMode) ? 2 : 1
-        columns: (isVertical && !compactMode) ? 1 : 2
+        flow: (isBarVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        rows: (isBarVertical && !compactMode) ? 2 : 1
+        columns: (isBarVertical && !compactMode) ? 1 : 2
         rowSpacing: Style.marginXXS
         columnSpacing: itemSpacing
 
@@ -988,7 +988,7 @@ Rectangle {
           Layout.preferredWidth: iconSize
           Layout.preferredHeight: compactMode ? iconSize : Style.capsuleHeight
           Layout.alignment: Qt.AlignCenter
-          Layout.row: (isVertical && !compactMode) ? 1 : 0
+          Layout.row: (isBarVertical && !compactMode) ? 1 : 0
           Layout.column: 0
 
           NIcon {
@@ -1012,8 +1012,8 @@ Rectangle {
           horizontalAlignment: Text.AlignHCenter
           verticalAlignment: Text.AlignVCenter
           color: (diskWarning || diskCritical) ? SystemStatService.getDiskColor(diskPath) : textColor
-          Layout.row: isVertical ? 0 : 0
-          Layout.column: isVertical ? 0 : 1
+          Layout.row: isBarVertical ? 0 : 0
+          Layout.column: isBarVertical ? 0 : 1
         }
 
         // Compact mode
