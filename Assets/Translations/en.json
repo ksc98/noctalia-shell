@@ -202,7 +202,11 @@
       "storage-usage-description": "Show disk space usage information.",
       "storage-usage-label": "Storage usage",
       "use-monospace-font-description": "Use monospace font for consistent character width.",
-      "use-monospace-font-label": "Monospace font"
+      "use-monospace-font-label": "Monospace font",
+      "coolant-temp-label": "Coolant temperature",
+      "coolant-temp-description": "Display coolant loop temperature from the configured sensor.",
+      "cpu-watt-label": "CPU wattage",
+      "cpu-watt-description": "Display CPU power draw using a configured sensor."
     },
     "taskbar": {
       "colorize-icons-description": "Apply theme colors to taskbar icons.",

@@ -341,10 +341,10 @@ Rectangle {
 
                 Row {
                   readonly property int rowIndex: index
-                readonly property int startCore: rowIndex * cpuCoreChartContainer.halfCount
-                readonly property int coreCountInRow: rowIndex === 0 ? cpuCoreChartContainer.halfCount : (cpuCoreChartContainer.coreCount - cpuCoreChartContainer.halfCount)
-                spacing: 1
-                height: cpuCoreChartContainer.rowHeight
+                  readonly property int startCore: rowIndex * cpuCoreChartContainer.halfCount
+                  readonly property int coreCountInRow: rowIndex === 0 ? cpuCoreChartContainer.halfCount : (cpuCoreChartContainer.coreCount - cpuCoreChartContainer.halfCount)
+                  spacing: 1
+                  height: cpuCoreChartContainer.rowHeight
 
                 Repeater {
                   model: parent.coreCountInRow

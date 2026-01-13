@@ -115,8 +115,8 @@ ColumnLayout {
   NToggle {
     id: showCoolantTemp
     Layout.fillWidth: true
-    label: "Coolant temperature"
-    description: "Display coolant loop temperature from the configured sensor."
+    label: I18n.tr("bar.system-monitor.coolant-temp-label")
+    description: I18n.tr("bar.system-monitor.coolant-temp-description")
     checked: valueShowCoolantTemp
     onToggled: checked => valueShowCoolantTemp = checked
   }
@@ -124,8 +124,8 @@ ColumnLayout {
   NToggle {
     id: showCpuWatt
     Layout.fillWidth: true
-    label: "CPU wattage"
-    description: "Display CPU power draw using a configured sensor."
+    label: I18n.tr("bar.system-monitor.cpu-watt-label")
+    description: I18n.tr("bar.system-monitor.cpu-watt-description")
     checked: valueShowCpuWatt
     onToggled: checked => valueShowCpuWatt = checked
   }
