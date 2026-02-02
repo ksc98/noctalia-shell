@@ -3,7 +3,7 @@
   "bar": {
     "position": "top",
     "monitors": [],
-    "density": "default",
+    "density": "compact",
     "showOutline": false,
     "showCapsule": true,
     "capsuleOpacity": 1,
@@ -248,7 +248,7 @@
     "memCriticalThreshold": 90,
     "diskWarningThreshold": 80,
     "diskCriticalThreshold": 90,
-    "cpuPollingInterval": 3000,
+    "cpuPollingInterval": 1000,
     "tempPollingInterval": 3000,
     "gpuPollingInterval": 3000,
     "enableDgpuMonitoring": false,

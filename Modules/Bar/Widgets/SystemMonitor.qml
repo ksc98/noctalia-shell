@@ -311,15 +311,14 @@ Rectangle {
           }
         }
 
-        // CPU Core Chart (per-core usage bars) - 2 rows: 0-15 top, 16-31 bottom
+        // CPU Core Chart (per-core usage bars) - single row with all cores
         Rectangle {
           id: cpuCoreChartContainer
           readonly property int coreCount: SystemStatService.coreUsages.length
-          readonly property int halfCount: Math.ceil(coreCount / 2)
-          readonly property real rowHeight: (Style.capsuleHeight * 0.8 - 2) / 2  // 2px gap between rows
+          readonly property real rowHeight: Style.capsuleHeight * 0.8  // Full height (was divided by 2 for stacked layout)
           readonly property real barWidth: 3
-          implicitWidth: halfCount * barWidth + (halfCount - 1) * 1 + 6  // bars + spacing + padding
-          implicitHeight: rowHeight * 2 + 2 + 4  // two rows + gap + padding
+          implicitWidth: coreCount * barWidth + (coreCount - 1) * 1 + 6  // bars + spacing + padding
+          implicitHeight: rowHeight + 4  // single row + padding
           Layout.alignment: Qt.AlignCenter
           Layout.row: 0
           Layout.column: 1
@@ -329,90 +328,66 @@ Rectangle {
           border.width: 1
           radius: 3
 
-          Column {
+          Row {
             anchors.centerIn: parent
-            spacing: 0
+            spacing: 1
 
             Repeater {
-              model: 2  // Two rows
+              model: cpuCoreChartContainer.coreCount
 
-              Column {
-                spacing: 0
+              Rectangle {
+                readonly property int coreIndex: index
+                width: cpuCoreChartContainer.barWidth
+                height: cpuCoreChartContainer.rowHeight
+                radius: width / 2
+                color: "transparent"
 
-                Row {
-                  readonly property int rowIndex: index
-                  readonly property int startCore: rowIndex * cpuCoreChartContainer.halfCount
-                  readonly property int coreCountInRow: rowIndex === 0 ? cpuCoreChartContainer.halfCount : (cpuCoreChartContainer.coreCount - cpuCoreChartContainer.halfCount)
-                  spacing: 1
-                  height: cpuCoreChartContainer.rowHeight
+                // System CPU (red) - bottom
+                Rectangle {
+                  readonly property real systemUsage: SystemStatService.coreSystemUsages[parent.coreIndex] || 0
+                  property real fillHeight: parent.height * Math.min(1, Math.max(0, systemUsage / 100))
+                  width: parent.width
+                  height: fillHeight
+                  radius: parent.radius
+                  color: "#ff5555"
+                  anchors.bottom: parent.bottom
 
-                Repeater {
-                  model: parent.coreCountInRow
-
-                  Rectangle {
-                    readonly property int coreIndex: parent.startCore + index
-                    width: cpuCoreChartContainer.barWidth
-                    height: cpuCoreChartContainer.rowHeight
-                    radius: width / 2
-                    color: "transparent"
-
-                    // System CPU (red) - bottom
-                    Rectangle {
-                      readonly property real systemUsage: SystemStatService.coreSystemUsages[parent.coreIndex] || 0
-                      property real fillHeight: parent.height * Math.min(1, Math.max(0, systemUsage / 100))
-                      width: parent.width
-                      height: fillHeight
-                      radius: parent.radius
-                      color: "#ff5555"
-                      anchors.bottom: parent.bottom
-
-                      Behavior on fillHeight {
-                        enabled: !Settings.data.general.animationDisabled
-                        NumberAnimation {
-                          duration: Style.animationNormal
-                          easing.type: Easing.OutCubic
-                        }
-                      }
-                    }
-
-                    // User CPU (blue) - on top of system
-                    Rectangle {
-                      readonly property real userUsage: SystemStatService.coreUserUsages[parent.coreIndex] || 0
-                      readonly property real systemUsage: SystemStatService.coreSystemUsages[parent.coreIndex] || 0
-                      property real systemHeight: parent.height * Math.min(1, Math.max(0, systemUsage / 100))
-                      property real fillHeight: parent.height * Math.min(1, Math.max(0, userUsage / 100))
-                      width: parent.width
-                      height: fillHeight
-                      radius: parent.radius
-                      color: "#5599ff"
-                      anchors.bottom: parent.bottom
-                      anchors.bottomMargin: systemHeight
-
-                      Behavior on fillHeight {
-                        enabled: !Settings.data.general.animationDisabled
-                        NumberAnimation {
-                          duration: Style.animationNormal
-                          easing.type: Easing.OutCubic
-                        }
-                      }
-                      Behavior on anchors.bottomMargin {
-                        enabled: !Settings.data.general.animationDisabled
-                        NumberAnimation {
-                          duration: Style.animationNormal
-                          easing.type: Easing.OutCubic
-                        }
-                      }
+                  Behavior on fillHeight {
+                    enabled: !Settings.data.general.animationDisabled
+                    NumberAnimation {
+                      duration: Style.animationNormal
+                      easing.type: Easing.OutCubic
                     }
                   }
                 }
-              }
 
-                // Separator line after first row
+                // User CPU (blue) - on top of system
                 Rectangle {
-                  visible: index === 0
-                  width: cpuCoreChartContainer.halfCount * cpuCoreChartContainer.barWidth + (cpuCoreChartContainer.halfCount - 1) * 1
-                  height: 1
-                  color: Qt.rgba(Color.mOnSurface.r, Color.mOnSurface.g, Color.mOnSurface.b, 0.5)
+                  readonly property real userUsage: SystemStatService.coreUserUsages[parent.coreIndex] || 0
+                  readonly property real systemUsage: SystemStatService.coreSystemUsages[parent.coreIndex] || 0
+                  property real systemHeight: parent.height * Math.min(1, Math.max(0, systemUsage / 100))
+                  property real fillHeight: parent.height * Math.min(1, Math.max(0, userUsage / 100))
+                  width: parent.width
+                  height: fillHeight
+                  radius: parent.radius
+                  color: "#5599ff"
+                  anchors.bottom: parent.bottom
+                  anchors.bottomMargin: systemHeight
+
+                  Behavior on fillHeight {
+                    enabled: !Settings.data.general.animationDisabled
+                    NumberAnimation {
+                      duration: Style.animationNormal
+                      easing.type: Easing.OutCubic
+                    }
+                  }
+                  Behavior on anchors.bottomMargin {
+                    enabled: !Settings.data.general.animationDisabled
+                    NumberAnimation {
+                      duration: Style.animationNormal
+                      easing.type: Easing.OutCubic
+                    }
+                  }
                 }
               }
             }
