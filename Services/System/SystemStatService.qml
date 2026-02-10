@@ -60,6 +60,9 @@ Singleton {
   property var diskSizeGb: ({}) // Total size in GB per mount point
   property real rxSpeed: 0
   property real txSpeed: 0
+  property real coolantTemp: 0
+  property real cpuWatt: 0
+  property var sensorChipCache: ({})
   property real zfsArcSizeKb: 0 // ZFS ARC cache size in KB
   property real zfsArcCminKb: 0 // ZFS ARC minimum (non-reclaimable) size in KB
   property real loadAvg1: 0
@@ -214,6 +217,8 @@ Singleton {
   readonly property bool memCritical: memPercent >= memCriticalThreshold
   readonly property bool swapWarning: swapPercent >= swapWarningThreshold
   readonly property bool swapCritical: swapPercent >= swapCriticalThreshold
+  readonly property bool coolantWarning: coolantTemp >= tempWarningThreshold
+  readonly property bool coolantCritical: coolantTemp >= tempCriticalThreshold
 
   // Helper functions for disk (disk path is dynamic)
   function isDiskWarning(diskPath, available = false) {
@@ -230,6 +235,7 @@ Singleton {
   readonly property color gpuColor: gpuCritical ? criticalColor : (gpuWarning ? warningColor : Color.mPrimary)
   readonly property color memColor: memCritical ? criticalColor : (memWarning ? warningColor : Color.mPrimary)
   readonly property color swapColor: swapCritical ? criticalColor : (swapWarning ? warningColor : Color.mPrimary)
+  readonly property color coolantColor: coolantCritical ? criticalColor : (coolantWarning ? warningColor : Color.mPrimary)
 
   function getCoreUsageColor(usage) {
     if (usage >= cpuCriticalThreshold)
@@ -358,6 +364,10 @@ Singleton {
     onTriggered: {
       cpuStatFile.reload();
       updateCpuTemperature();
+      // Also poll configured sensors (coolant temp, CPU wattage)
+      if (shouldReadSensorProcess() && !sensorsProcess.running) {
+        sensorsProcess.running = true;
+      }
     }
   }
 
@@ -575,6 +585,18 @@ Singleton {
         if (Math.abs(root.cpuGlobalMaxFreq - newMaxFreq) > 0.01) {
           root.cpuGlobalMaxFreq = newMaxFreq;
         }
+      }
+    }
+  }
+
+  // Process to fetch coolant temperature and CPU wattage via sensors -j
+  Process {
+    id: sensorsProcess
+    command: ["sensors", "-j"]
+    running: false
+    stdout: StdioCollector {
+      onStreamFinished: {
+        root.processSensorData(text);
       }
     }
   }
@@ -1502,5 +1524,91 @@ Singleton {
         gpuThermalZoneReader.reload();
       }
     }
+  }
+
+  // -------------------------------------------------------
+  // Sensor support: coolant temperature, CPU wattage
+  // Uses `sensors -j` for JSON output from lm_sensors
+
+  function shouldReadSensorProcess() {
+    return hasConfiguredSensor(
+      Settings.data.systemMonitor.coolantSensorChip,
+      Settings.data.systemMonitor.coolantSensorLabel
+    ) || hasConfiguredSensor(
+      Settings.data.systemMonitor.cpuWattSensorChip,
+      Settings.data.systemMonitor.cpuWattSensorLabel
+    );
+  }
+
+  function hasConfiguredSensor(chip, label) {
+    return chip && chip.length > 0 && label && label.length > 0;
+  }
+
+  function processSensorData(rawText) {
+    try {
+      var data = JSON.parse(rawText);
+
+      // Read coolant temperature
+      var coolantChip = Settings.data.systemMonitor.coolantSensorChip;
+      var coolantLabel = Settings.data.systemMonitor.coolantSensorLabel;
+      var coolantKey = Settings.data.systemMonitor.coolantSensorValueKey;
+      if (hasConfiguredSensor(coolantChip, coolantLabel)) {
+        var coolantVal = readConfiguredSensorValue(data, coolantChip, coolantLabel, coolantKey);
+        if (coolantVal !== null) {
+          root.coolantTemp = coolantVal;
+        }
+      }
+
+      // Read CPU wattage
+      var wattChip = Settings.data.systemMonitor.cpuWattSensorChip;
+      var wattLabel = Settings.data.systemMonitor.cpuWattSensorLabel;
+      var wattKey = Settings.data.systemMonitor.cpuWattSensorValueKey;
+      if (hasConfiguredSensor(wattChip, wattLabel)) {
+        var wattVal = readConfiguredSensorValue(data, wattChip, wattLabel, wattKey);
+        if (wattVal !== null) {
+          root.cpuWatt = wattVal;
+        }
+      }
+    } catch (e) {
+      Logger.w("SystemStat", "Failed to parse sensor data:", e);
+    }
+  }
+
+  function readConfiguredSensorValue(data, chipName, sensorName, valueKey) {
+    var resolvedKey = resolveSensorChipKey(data, chipName);
+    if (!resolvedKey) return null;
+    var chipData = data[resolvedKey];
+    if (!chipData || !chipData[sensorName]) return null;
+    var sensorData = chipData[sensorName];
+    if (valueKey && sensorData[valueKey] !== undefined) {
+      return sensorData[valueKey];
+    }
+    // Fallback: find first numeric value
+    for (var key in sensorData) {
+      if (typeof sensorData[key] === "number") {
+        return sensorData[key];
+      }
+    }
+    return null;
+  }
+
+  function resolveSensorChipKey(data, chipName) {
+    if (root.sensorChipCache[chipName] !== undefined) {
+      return root.sensorChipCache[chipName];
+    }
+    // Exact match
+    if (data[chipName]) {
+      root.sensorChipCache[chipName] = chipName;
+      return chipName;
+    }
+    // Fuzzy match (chip name may have suffix like "-isa-0000")
+    for (var key in data) {
+      if (key.indexOf(chipName) !== -1 || chipName.indexOf(key) !== -1) {
+        root.sensorChipCache[chipName] = key;
+        return key;
+      }
+    }
+    root.sensorChipCache[chipName] = null;
+    return null;
   }
 }
