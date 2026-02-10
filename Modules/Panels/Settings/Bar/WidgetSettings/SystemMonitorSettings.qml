@@ -27,10 +27,14 @@ ColumnLayout {
   property bool valueUsePadding: widgetData.usePadding !== undefined ? widgetData.usePadding : widgetMetadata.usePadding
   property bool valueShowCpuUsage: widgetData.showCpuUsage !== undefined ? widgetData.showCpuUsage : widgetMetadata.showCpuUsage
   property bool valueShowCpuCores: widgetData.showCpuCores !== undefined ? widgetData.showCpuCores : widgetMetadata.showCpuCores
+  property bool valueShowCpuCoreChart: widgetData.showCpuCoreChart !== undefined ? widgetData.showCpuCoreChart : widgetMetadata.showCpuCoreChart
   property bool valueShowCpuFreq: widgetData.showCpuFreq !== undefined ? widgetData.showCpuFreq : widgetMetadata.showCpuFreq
   property bool valueShowCpuTemp: widgetData.showCpuTemp !== undefined ? widgetData.showCpuTemp : widgetMetadata.showCpuTemp
   property bool valueShowGpuTemp: widgetData.showGpuTemp !== undefined ? widgetData.showGpuTemp : widgetMetadata.showGpuTemp
   property bool valueShowLoadAverage: widgetData.showLoadAverage !== undefined ? widgetData.showLoadAverage : widgetMetadata.showLoadAverage
+  property bool valueShowCoolantTemp: widgetData.showCoolantTemp !== undefined ? widgetData.showCoolantTemp : widgetMetadata.showCoolantTemp
+  property bool valueCoolantUseCompactMode: widgetData.coolantUseCompactMode !== undefined ? widgetData.coolantUseCompactMode : (widgetMetadata.coolantUseCompactMode || false)
+  property bool valueShowCpuWatt: widgetData.showCpuWatt !== undefined ? widgetData.showCpuWatt : widgetMetadata.showCpuWatt
   property bool valueShowMemoryUsage: widgetData.showMemoryUsage !== undefined ? widgetData.showMemoryUsage : widgetMetadata.showMemoryUsage
   property bool valueShowMemoryAsPercent: widgetData.showMemoryAsPercent !== undefined ? widgetData.showMemoryAsPercent : widgetMetadata.showMemoryAsPercent
   property bool valueShowSwapUsage: widgetData.showSwapUsage !== undefined ? widgetData.showSwapUsage : widgetMetadata.showSwapUsage
@@ -49,10 +53,14 @@ ColumnLayout {
     settings.usePadding = valueUsePadding;
     settings.showCpuUsage = valueShowCpuUsage;
     settings.showCpuCores = valueShowCpuCores;
+    settings.showCpuCoreChart = valueShowCpuCoreChart;
     settings.showCpuFreq = valueShowCpuFreq;
     settings.showCpuTemp = valueShowCpuTemp;
     settings.showGpuTemp = valueShowGpuTemp;
     settings.showLoadAverage = valueShowLoadAverage;
+    settings.showCoolantTemp = valueShowCoolantTemp;
+    settings.coolantUseCompactMode = valueCoolantUseCompactMode;
+    settings.showCpuWatt = valueShowCpuWatt;
     settings.showMemoryUsage = valueShowMemoryUsage;
     settings.showMemoryAsPercent = valueShowMemoryAsPercent;
     settings.showSwapUsage = valueShowSwapUsage;
@@ -155,6 +163,18 @@ ColumnLayout {
   }
 
   NToggle {
+    id: showCpuCoreChart
+    Layout.fillWidth: true
+    label: I18n.tr("bar.system-monitor.cpu-core-chart-label")
+    description: I18n.tr("bar.system-monitor.cpu-core-chart-description")
+    checked: valueShowCpuCoreChart
+    onToggled: checked => {
+                 valueShowCpuCoreChart = checked;
+                 saveSettings();
+               }
+  }
+
+  NToggle {
     id: showCpuFreq
     Layout.fillWidth: true
     label: I18n.tr("bar.system-monitor.cpu-frequency-label")
@@ -205,6 +225,43 @@ ColumnLayout {
                }
     visible: SystemStatService.gpuAvailable
     defaultValue: widgetMetadata.showGpuTemp
+  }
+
+  NToggle {
+    id: showCoolantTemp
+    Layout.fillWidth: true
+    label: I18n.tr("bar.system-monitor.coolant-temp-label")
+    description: I18n.tr("bar.system-monitor.coolant-temp-description")
+    checked: valueShowCoolantTemp
+    onToggled: checked => {
+                 valueShowCoolantTemp = checked;
+                 settingsChanged(saveSettings());
+               }
+  }
+
+  NToggle {
+    id: coolantUseCompactMode
+    Layout.fillWidth: true
+    visible: valueShowCoolantTemp
+    label: I18n.tr("bar.system-monitor.coolant-compact-label")
+    description: I18n.tr("bar.system-monitor.coolant-compact-description")
+    checked: valueCoolantUseCompactMode
+    onToggled: checked => {
+                 valueCoolantUseCompactMode = checked;
+                 settingsChanged(saveSettings());
+               }
+  }
+
+  NToggle {
+    id: showCpuWatt
+    Layout.fillWidth: true
+    label: I18n.tr("bar.system-monitor.cpu-watt-label")
+    description: I18n.tr("bar.system-monitor.cpu-watt-description")
+    checked: valueShowCpuWatt
+    onToggled: checked => {
+                 valueShowCpuWatt = checked;
+                 settingsChanged(saveSettings());
+               }
   }
 
   NToggle {
