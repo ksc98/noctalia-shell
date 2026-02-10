@@ -55,6 +55,10 @@ Item {
   readonly property bool showDiskUsage: (widgetSettings.showDiskUsage !== undefined) ? widgetSettings.showDiskUsage : widgetMetadata.showDiskUsage
   readonly property bool showDiskUsageAsPercent: (widgetSettings.showDiskUsageAsPercent !== undefined) ? widgetSettings.showDiskUsageAsPercent : widgetMetadata.showDiskUsageAsPercent
   readonly property bool showDiskAvailable: (widgetSettings.showDiskAvailable !== undefined) ? widgetSettings.showDiskAvailable : widgetMetadata.showDiskAvailable
+  readonly property bool showCpuCoreChart: (widgetSettings.showCpuCoreChart !== undefined) ? widgetSettings.showCpuCoreChart : (widgetMetadata.showCpuCoreChart || false)
+  readonly property bool showCoolantTemp: (widgetSettings.showCoolantTemp !== undefined) ? widgetSettings.showCoolantTemp : widgetMetadata.showCoolantTemp
+  readonly property bool coolantUseCompactMode: (widgetSettings.coolantUseCompactMode !== undefined) ? widgetSettings.coolantUseCompactMode : (widgetMetadata.coolantUseCompactMode || false)
+  readonly property bool showCpuWatt: (widgetSettings.showCpuWatt !== undefined) ? widgetSettings.showCpuWatt : widgetMetadata.showCpuWatt
   readonly property bool showLoadAverage: (widgetSettings.showLoadAverage !== undefined) ? widgetSettings.showLoadAverage : widgetMetadata.showLoadAverage
   readonly property string diskPath: (widgetSettings.diskPath !== undefined) ? widgetSettings.diskPath : widgetMetadata.diskPath
   readonly property string fontFamily: useMonospaceFont ? Settings.data.ui.fontFixed : Settings.data.ui.fontDefault
@@ -99,6 +103,11 @@ Item {
       rows.push([I18n.tr("system-monitor.load-average"), `${SystemStatService.loadAvg1.toFixed(2)} · ${SystemStatService.loadAvg5.toFixed(2)} · ${SystemStatService.loadAvg15.toFixed(2)}`]);
     }
 
+    // Coolant (if configured)
+    if (SystemStatService.coolantTemp > 0) {
+      rows.push(["Coolant", `${Number(SystemStatService.coolantTemp).toFixed(1)}°C`]);
+    }
+
     // Memory
     rows.push([I18n.tr("common.memory"), `${Math.round(SystemStatService.memPercent)}% (${SystemStatService.formatGigabytes(SystemStatService.memGb).replace(/[^0-9.]/g, "") + " GB"})`]);
 
@@ -137,6 +146,8 @@ Item {
   readonly property bool swapCritical: showSwapUsage && SystemStatService.swapCritical
   readonly property bool diskWarning: showDiskUsage && SystemStatService.isDiskWarning(diskPath)
   readonly property bool diskCritical: showDiskUsage && SystemStatService.isDiskCritical(diskPath)
+  readonly property bool coolantWarning: showCoolantTemp && SystemStatService.coolantWarning
+  readonly property bool coolantCritical: showCoolantTemp && SystemStatService.coolantCritical
 
   NPopupContextMenu {
     id: contextMenu
@@ -271,10 +282,10 @@ Item {
             Layout.column: isVertical ? 0 : 1
           }
 
-          // Compact mode
+          // Compact mode - mini gauge (hide if core chart is shown)
           Loader {
-            active: compactMode
-            visible: compactMode
+            active: compactMode && !showCpuCoreChart
+            visible: compactMode && !showCpuCoreChart
             sourceComponent: miniGaugeComponent
             Layout.alignment: Qt.AlignCenter
             Layout.row: 0
@@ -283,6 +294,60 @@ Item {
             onLoaded: {
               item.ratio = Qt.binding(() => SystemStatService.cpuUsage / 100);
               item.statColor = Qt.binding(() => SystemStatService.cpuColor);
+            }
+          }
+
+          // CPU Core Chart (per-core usage bars)
+          Item {
+            id: cpuCoreChartContainer
+            readonly property real chartHeight: capsuleHeight * 0.75
+            implicitWidth: coreChartRow.implicitWidth
+            implicitHeight: chartHeight
+            Layout.alignment: Qt.AlignCenter
+            Layout.row: 0
+            Layout.column: 1
+            visible: showCpuCoreChart && SystemStatService.coreUsages.length > 0
+
+            Row {
+              id: coreChartRow
+              anchors.centerIn: parent
+              spacing: 1
+              height: cpuCoreChartContainer.chartHeight
+
+              Repeater {
+                model: SystemStatService.coreUsages
+
+                Rectangle {
+                  width: Math.max(2, Math.round(iconSize * 0.12))
+                  height: parent.height
+                  radius: width / 2
+                  color: Color.mOutline
+
+                  Rectangle {
+                    property real fillHeight: parent.height * Math.min(1, Math.max(0, modelData / 100))
+                    width: parent.width
+                    height: fillHeight
+                    radius: parent.radius
+                    color: {
+                      const usage = modelData || 0;
+                      if (usage >= Settings.data.systemMonitor.cpuCriticalThreshold)
+                        return SystemStatService.criticalColor;
+                      if (usage >= Settings.data.systemMonitor.cpuWarningThreshold)
+                        return SystemStatService.warningColor;
+                      return SystemStatService.cpuColor;
+                    }
+                    anchors.bottom: parent.bottom
+
+                    Behavior on fillHeight {
+                      enabled: !Settings.data.general.animationDisabled
+                      NumberAnimation {
+                        duration: Style.animationNormal
+                        easing.type: Easing.OutCubic
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -554,6 +619,148 @@ Item {
 
             onLoaded: {
               item.ratio = Qt.binding(() => Math.min(1, SystemStatService.loadAvg1 / SystemStatService.nproc));
+              item.statColor = Qt.binding(() => Color.mPrimary);
+            }
+          }
+        }
+      }
+
+      // Coolant Temperature Component
+      Item {
+        id: coolantTempContainer
+        implicitWidth: coolantTempContent.implicitWidth
+        implicitHeight: coolantTempContent.implicitHeight
+        Layout.preferredWidth: isVertical ? root.width : implicitWidth
+        Layout.preferredHeight: compactMode ? implicitHeight : capsuleHeight
+        Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+        visible: showCoolantTemp
+
+        GridLayout {
+          id: coolantTempContent
+          anchors.centerIn: parent
+          flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+          rows: (isVertical && !compactMode) ? 2 : 1
+          columns: (isVertical && !compactMode) ? 1 : 2
+          rowSpacing: Style.marginXXS
+          columnSpacing: compactMode ? 3 : Style.marginXS
+
+          Item {
+            Layout.preferredWidth: iconSize
+            Layout.preferredHeight: (compactMode || isVertical) ? iconSize : capsuleHeight
+            Layout.alignment: Qt.AlignCenter
+            Layout.row: (isVertical && !compactMode) ? 1 : 0
+            Layout.column: 0
+
+            NIcon {
+              icon: "droplet"
+              pointSize: iconSize
+              applyUiScale: false
+              x: Style.pixelAlignCenter(parent.width, width)
+              y: Style.pixelAlignCenter(parent.height, contentHeight)
+              color: (coolantWarning || coolantCritical) ? SystemStatService.coolantColor : root.iconColor
+            }
+          }
+
+          // Text mode (show when not using compact mode, or always if coolantUseCompactMode is false)
+          NText {
+            visible: !compactMode || !coolantUseCompactMode
+            text: Number(SystemStatService.coolantTemp).toFixed(1) + "°"
+            family: fontFamily
+            pointSize: barFontSize
+            applyUiScale: false
+            Layout.alignment: Qt.AlignCenter
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            color: (coolantWarning || coolantCritical) ? SystemStatService.coolantColor : root.textColor
+            Layout.row: isVertical ? 0 : 0
+            Layout.column: isVertical ? 0 : 1
+          }
+
+          // Compact mode gauge (only when coolantUseCompactMode is true)
+          Loader {
+            active: compactMode && coolantUseCompactMode
+            visible: compactMode && coolantUseCompactMode
+            sourceComponent: miniGaugeComponent
+            Layout.alignment: Qt.AlignCenter
+            Layout.row: 0
+            Layout.column: 1
+
+            onLoaded: {
+              item.ratio = Qt.binding(() => SystemStatService.coolantTemp / 100);
+              item.statColor = Qt.binding(() => SystemStatService.coolantColor);
+            }
+          }
+        }
+      }
+
+      // CPU Watt Component
+      Item {
+        id: cpuWattContainer
+        implicitWidth: cpuWattContent.implicitWidth
+        implicitHeight: cpuWattContent.implicitHeight
+        Layout.preferredWidth: isVertical ? root.width : implicitWidth
+        Layout.preferredHeight: compactMode ? implicitHeight : capsuleHeight
+        Layout.alignment: isVertical ? Qt.AlignHCenter : Qt.AlignVCenter
+        visible: showCpuWatt
+
+        GridLayout {
+          id: cpuWattContent
+          anchors.centerIn: parent
+          flow: (isVertical && !compactMode) ? GridLayout.TopToBottom : GridLayout.LeftToRight
+          rows: (isVertical && !compactMode) ? 2 : 1
+          columns: (isVertical && !compactMode) ? 1 : 2
+          rowSpacing: Style.marginXXS
+          columnSpacing: compactMode ? 3 : Style.marginXS
+
+          Item {
+            Layout.preferredWidth: iconSize
+            Layout.preferredHeight: (compactMode || isVertical) ? iconSize : capsuleHeight
+            Layout.alignment: Qt.AlignCenter
+            Layout.row: (isVertical && !compactMode) ? 1 : 0
+            Layout.column: 0
+
+            NIcon {
+              icon: "bolt"
+              pointSize: iconSize
+              applyUiScale: false
+              x: Style.pixelAlignCenter(parent.width, width)
+              y: Style.pixelAlignCenter(parent.height, contentHeight)
+              color: root.iconColor
+            }
+          }
+
+          // Text mode
+          NText {
+            visible: !compactMode
+            text: {
+              const watt = Number(SystemStatService.cpuWatt);
+              if (!watt || isNaN(watt)) {
+                return "--";
+              }
+              return `${Math.round(watt)}W`;
+            }
+            family: fontFamily
+            pointSize: barFontSize
+            applyUiScale: false
+            Layout.alignment: Qt.AlignCenter
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            color: root.textColor
+            Layout.row: isVertical ? 0 : 0
+            Layout.column: isVertical ? 0 : 1
+          }
+
+          // Compact mode - show as mini gauge (ratio based on typical max of 150W)
+          Loader {
+            active: compactMode
+            visible: compactMode
+            sourceComponent: miniGaugeComponent
+            Layout.alignment: Qt.AlignCenter
+            Layout.row: 0
+            Layout.column: 1
+
+            onLoaded: {
+              item.ratio = Qt.binding(() => Math.min(1, SystemStatService.cpuWatt / 150));
               item.statColor = Qt.binding(() => Color.mPrimary);
             }
           }

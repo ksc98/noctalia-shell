@@ -510,6 +510,12 @@ Singleton {
       property int diskPollingInterval: 30000
       property int networkPollingInterval: 1000
       property int loadAvgPollingInterval: 3000
+      property string coolantSensorChip: ""
+      property string coolantSensorLabel: ""
+      property string coolantSensorValueKey: ""
+      property string cpuWattSensorChip: ""
+      property string cpuWattSensorLabel: ""
+      property string cpuWattSensorValueKey: ""
       property bool useCustomColors: false
       property string warningColor: ""
       property string criticalColor: ""
