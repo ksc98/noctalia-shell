@@ -28,6 +28,7 @@ ColumnLayout {
   property bool valueShowCpuUsage: widgetData.showCpuUsage !== undefined ? widgetData.showCpuUsage : widgetMetadata.showCpuUsage
   property bool valueShowCpuCores: widgetData.showCpuCores !== undefined ? widgetData.showCpuCores : widgetMetadata.showCpuCores
   property bool valueShowCpuCoreChart: widgetData.showCpuCoreChart !== undefined ? widgetData.showCpuCoreChart : widgetMetadata.showCpuCoreChart
+  property bool valueShowCoreChartMemLine: widgetData.showCoreChartMemLine !== undefined ? widgetData.showCoreChartMemLine : (widgetMetadata.showCoreChartMemLine || false)
   property bool valueShowCpuFreq: widgetData.showCpuFreq !== undefined ? widgetData.showCpuFreq : widgetMetadata.showCpuFreq
   property bool valueShowCpuTemp: widgetData.showCpuTemp !== undefined ? widgetData.showCpuTemp : widgetMetadata.showCpuTemp
   property bool valueShowGpuTemp: widgetData.showGpuTemp !== undefined ? widgetData.showGpuTemp : widgetMetadata.showGpuTemp
@@ -54,6 +55,7 @@ ColumnLayout {
     settings.showCpuUsage = valueShowCpuUsage;
     settings.showCpuCores = valueShowCpuCores;
     settings.showCpuCoreChart = valueShowCpuCoreChart;
+    settings.showCoreChartMemLine = valueShowCoreChartMemLine;
     settings.showCpuFreq = valueShowCpuFreq;
     settings.showCpuTemp = valueShowCpuTemp;
     settings.showGpuTemp = valueShowGpuTemp;
@@ -175,6 +177,18 @@ ColumnLayout {
   }
 
   NToggle {
+    visible: valueShowCpuCoreChart
+    Layout.fillWidth: true
+    label: "Core Chart Memory Line"
+    description: "Show RAM usage history overlay on core chart"
+    checked: valueShowCoreChartMemLine
+    onToggled: checked => {
+                 valueShowCoreChartMemLine = checked;
+                 saveSettings();
+               }
+  }
+
+  NToggle {
     id: showCpuFreq
     Layout.fillWidth: true
     label: I18n.tr("bar.system-monitor.cpu-frequency-label")
@@ -235,7 +249,7 @@ ColumnLayout {
     checked: valueShowCoolantTemp
     onToggled: checked => {
                  valueShowCoolantTemp = checked;
-                 settingsChanged(saveSettings());
+                 saveSettings();
                }
   }
 
@@ -248,7 +262,7 @@ ColumnLayout {
     checked: valueCoolantUseCompactMode
     onToggled: checked => {
                  valueCoolantUseCompactMode = checked;
-                 settingsChanged(saveSettings());
+                 saveSettings();
                }
   }
 
@@ -260,7 +274,7 @@ ColumnLayout {
     checked: valueShowCpuWatt
     onToggled: checked => {
                  valueShowCpuWatt = checked;
-                 settingsChanged(saveSettings());
+                 saveSettings();
                }
   }
 

@@ -262,6 +262,9 @@ Singleton {
   // Internal state for CPU calculation
   property var prevCpuStats: null
   property var prevCpuCoresStats: null
+  // ListModel for per-core usage (enables smooth animation in Repeater delegates)
+  readonly property alias coreUsageModel: _coreUsageModel
+  ListModel { id: _coreUsageModel }
 
   // Internal state for network speed calculation
   // Previous Bytes need to be stored as 'real' as they represent the total of bytes transfered
@@ -1184,6 +1187,7 @@ Singleton {
 
     let coresStats = [];
     let newCoresUsage = root.coresUsage.slice();
+    const newCoreUsages = []; // user/system split for chart animations
     for (let i = 0; i < nbCores; i++) {
       const coreCpuLine = lines[i + 1];
       const currCoreStats = calculateLineUsage(coreCpuLine);
@@ -1191,10 +1195,47 @@ Singleton {
       if (coreUsage >= 0) {
         newCoresUsage[i] = coreUsage;
       }
+
+      // Compute user/system split for chart
+      const prev = root.prevCpuCoresStats?.[i];
+      if (prev) {
+        const prevTotal = Object.values(prev).reduce((sum, val) => sum + val, 0);
+        const currTotal = Object.values(currCoreStats).reduce((sum, val) => sum + val, 0);
+        const diffTotal = currTotal - prevTotal;
+        if (diffTotal > 0) {
+          const diffUser = (currCoreStats.user + currCoreStats.nice) - (prev.user + prev.nice);
+          const diffSystem = (currCoreStats.system + currCoreStats.irq + currCoreStats.softirq) - (prev.system + prev.irq + prev.softirq);
+          newCoreUsages.push({"user": (diffUser / diffTotal) * 100, "system": (diffSystem / diffTotal) * 100});
+        } else {
+          newCoreUsages.push({"user": 0, "system": 0});
+        }
+      } else {
+        newCoreUsages.push({"user": 0, "system": 0});
+      }
+
       coresStats.push(currCoreStats);
     }
     root.coresUsage = newCoresUsage;
     root.prevCpuCoresStats = coresStats;
+
+    // Update ListModel in-place so Repeater delegates persist and animate
+    const currentRam = root.memPercent;
+    if (_coreUsageModel.count === 0) {
+      for (let ci = 0; ci < newCoreUsages.length; ci++)
+        _coreUsageModel.append({"userUsage": newCoreUsages[ci].user, "systemUsage": newCoreUsages[ci].system, "ram": 0});
+      if (_coreUsageModel.count > 0)
+        _coreUsageModel.setProperty(_coreUsageModel.count - 1, "ram", currentRam);
+    } else {
+      // Shift RAM history left
+      for (let ci = 0; ci < _coreUsageModel.count - 1; ci++)
+        _coreUsageModel.setProperty(ci, "ram", _coreUsageModel.get(ci + 1).ram);
+      _coreUsageModel.setProperty(_coreUsageModel.count - 1, "ram", currentRam);
+      // Update CPU usage per core
+      for (let ci = 0; ci < newCoreUsages.length; ci++) {
+        _coreUsageModel.setProperty(ci, "userUsage", newCoreUsages[ci].user);
+        _coreUsageModel.setProperty(ci, "systemUsage", newCoreUsages[ci].system);
+      }
+    }
   }
 
   // -------------------------------------------------------
@@ -1616,9 +1657,9 @@ Singleton {
       root.sensorChipCache[chipName] = chipName;
       return chipName;
     }
-    // Fuzzy match (chip name may have suffix like "-isa-0000")
+    // Prefix match (e.g. "quadro-hid-3" matches "quadro-hid-3-d")
     for (var key in data) {
-      if (key.indexOf(chipName) !== -1 || chipName.indexOf(key) !== -1) {
+      if (key.startsWith(chipName) || chipName.startsWith(key)) {
         root.sensorChipCache[chipName] = key;
         return key;
       }

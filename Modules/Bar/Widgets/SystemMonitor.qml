@@ -59,6 +59,7 @@ Item {
   readonly property bool showDiskUsageAsPercent: (widgetSettings.showDiskUsageAsPercent !== undefined) ? widgetSettings.showDiskUsageAsPercent : widgetMetadata.showDiskUsageAsPercent
   readonly property bool showDiskAvailable: (widgetSettings.showDiskAvailable !== undefined) ? widgetSettings.showDiskAvailable : widgetMetadata.showDiskAvailable
   readonly property bool showCpuCoreChart: (widgetSettings.showCpuCoreChart !== undefined) ? widgetSettings.showCpuCoreChart : (widgetMetadata.showCpuCoreChart || false)
+  readonly property bool showCoreChartMemLine: (widgetSettings.showCoreChartMemLine !== undefined) ? widgetSettings.showCoreChartMemLine : (widgetMetadata.showCoreChartMemLine || false)
   readonly property bool showCoolantTemp: (widgetSettings.showCoolantTemp !== undefined) ? widgetSettings.showCoolantTemp : widgetMetadata.showCoolantTemp
   readonly property bool coolantUseCompactMode: (widgetSettings.coolantUseCompactMode !== undefined) ? widgetSettings.coolantUseCompactMode : (widgetMetadata.coolantUseCompactMode || false)
   readonly property bool showCpuWatt: (widgetSettings.showCpuWatt !== undefined) ? widgetSettings.showCpuWatt : widgetMetadata.showCpuWatt
@@ -317,7 +318,7 @@ Item {
             Layout.alignment: Qt.AlignCenter
             Layout.row: 0
             Layout.column: 1
-            visible: showCpuCoreChart && SystemStatService.coresUsage.length > 0
+            visible: showCpuCoreChart && SystemStatService.coreUsageModel.count > 0
 
             Row {
               id: coreChartRow
@@ -326,30 +327,91 @@ Item {
               height: cpuCoreChartContainer.chartHeight
 
               Repeater {
-                model: SystemStatService.coresUsage
+                model: SystemStatService.coreUsageModel
 
-                Rectangle {
-                  width: Math.max(2, Math.round(iconSize * 0.12))
+                Item {
+                  readonly property int ccdGap: 3
+                  readonly property bool isCcdBoundary: index === Math.floor(SystemStatService.coreUsageModel.count / 2)
+                  readonly property int barWidth: Math.max(3, Math.round(iconSize * 0.2))
+                  width: barWidth + (isCcdBoundary ? ccdGap : 0)
                   height: parent.height
-                  radius: width / 2
-                  color: Color.mOutline
 
                   Rectangle {
-                    property real fillHeight: parent.height * Math.min(1, Math.max(0, modelData / 100))
+                    width: parent.barWidth
+                    height: parent.height
+                    x: parent.isCcdBoundary ? parent.ccdGap : 0
+                    radius: 1
+                    antialiasing: true
+                    color: Color.mOutline
+                    clip: true
+
+                  // User CPU (total height, blue — visible above system fill)
+                  Rectangle {
+                    property real fillHeight: parent.height * Math.min(1, Math.max(0, (model.userUsage + model.systemUsage) / 100))
                     width: parent.width
                     height: fillHeight
-                    radius: parent.radius
-                    color: {
-                      const usage = modelData || 0;
-                      if (usage >= Settings.data.systemMonitor.cpuCriticalThreshold)
-                        return SystemStatService.criticalColor;
-                      if (usage >= Settings.data.systemMonitor.cpuWarningThreshold)
-                        return SystemStatService.warningColor;
-                      return SystemStatService.cpuColor;
-                    }
+                    color: SystemStatService.cpuColor
                     anchors.bottom: parent.bottom
 
                     Behavior on fillHeight {
+                      enabled: !Settings.data.general.animationDisabled
+                      NumberAnimation {
+                        duration: Style.animationNormal
+                        easing.type: Easing.OutCubic
+                      }
+                    }
+                  }
+
+                  // System/kernel CPU (bottom, red — covers blue below it)
+                  Rectangle {
+                    property real fillHeight: parent.height * Math.min(1, Math.max(0, model.systemUsage / 100))
+                    width: parent.width
+                    height: fillHeight
+                    color: SystemStatService.criticalColor
+                    anchors.bottom: parent.bottom
+
+                    Behavior on fillHeight {
+                      enabled: !Settings.data.general.animationDisabled
+                      NumberAnimation {
+                        duration: Style.animationNormal
+                        easing.type: Easing.OutCubic
+                      }
+                    }
+                  }
+
+                  }
+                }
+              }
+            }
+
+            // RAM usage history overlay
+            Row {
+              anchors.centerIn: parent
+              spacing: 1
+              height: cpuCoreChartContainer.chartHeight
+              z: 2
+              visible: showCoreChartMemLine
+
+              Repeater {
+                model: SystemStatService.coreUsageModel
+
+                Item {
+                  readonly property int ccdGap: 3
+                  readonly property bool isCcdBoundary: index === Math.floor(SystemStatService.coreUsageModel.count / 2)
+                  readonly property int barWidth: Math.max(3, Math.round(iconSize * 0.2))
+                  width: barWidth + (isCcdBoundary ? ccdGap : 0)
+                  height: parent.height
+
+                  Rectangle {
+                    property real ramY: parent.height * (1 - Math.min(1, Math.max(0, model.ram / 100))) - height / 2
+                    width: parent.barWidth + 1
+                    height: 1
+                    x: parent.isCcdBoundary ? parent.ccdGap : 0
+                    y: Math.max(0, Math.min(parent.height - height, ramY))
+                    visible: model.ram > 0
+                    color: "#99FFA500"
+
+                    Behavior on y {
                       enabled: !Settings.data.general.animationDisabled
                       NumberAnimation {
                         duration: Style.animationNormal
