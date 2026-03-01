@@ -241,6 +241,7 @@ Singleton {
                                     "showCpuCores": false,
                                     "showCpuFreq": false,
                                     "showCpuCoreChart": true,
+                                    "showCoreChartMemLine": false,
                                     "showCoolantTemp": false,
                                     "coolantUseCompactMode": false,
                                     "showCpuWatt": false,
