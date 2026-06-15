@@ -80,6 +80,7 @@ namespace settings {
         {.type = "settings", .labelKey = "settings.widgets.types.settings", .glyph = "settings"},
         {.type = "spacer", .labelKey = "settings.widgets.types.spacer", .glyph = "arrows-horizontal"},
         {.type = "sysmon", .labelKey = "settings.widgets.types.sysmon", .glyph = "cpu-usage"},
+        {.type = "sysmon_cores", .labelKey = "settings.widgets.types.sysmon-cores", .glyph = "cpu-usage"},
         {.type = "taskbar", .labelKey = "settings.widgets.types.taskbar", .glyph = "apps"},
         {.type = "test", .labelKey = "settings.widgets.types.test", .glyph = "flask", .visibleInPicker = false},
         {.type = "theme_mode", .labelKey = "settings.widgets.types.theme-mode", .glyph = "theme-mode"},
@@ -904,6 +905,12 @@ namespace settings {
       }
     } else if (type == "power_profile") {
       add(boolSpec("enable_scroll", true));
+    } else if (type == "sysmon_cores") {
+      add(intSpec("bar_width", 3, 1.0, 40.0, 1.0));
+      add(intSpec("gap", 1, 0.0, 20.0, 1.0));
+      add(boolSpec("show_system", true));
+      add(boolSpec("smoothing", true));
+      add(colorSpec("system_color", "error"));
     } else if (type == "taskbar") {
       // Windows: what the taskbar lists and how each window tile looks.
       add(withGroup(boolSpec("enable_scroll", true), "taskbar.windows"));
