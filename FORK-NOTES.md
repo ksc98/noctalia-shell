@@ -5,9 +5,8 @@ widget: **`sysmon_cores`** — a per-core CPU bar chart (one vertical bar per lo
 in primary, system time stacked in error color), height-animated via the `AnimationManager` at
 vsync. Replaces the Luau-plugin SVG chart (which was capped ~30fps by image reloads).
 
-Branch: `sysmon-cores-widget`. `origin` = upstream noctalia-dev (do NOT push there). No personal
-remote — if you want this on GitHub, create your OWN v5 fork repo and push there (NOT
-`ksc98/noctalia-shell`, which is the unrelated v4 repo).
+Branch: **`kyle`** (our stuff; `main` mirrors upstream). Remotes: `origin` = upstream noctalia-dev
+(pull only, do NOT push), `fork` = `ksc98/noctalia-shell` (push here: `git push fork kyle`).
 
 ## Build / install / run
 

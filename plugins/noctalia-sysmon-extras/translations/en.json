@@ -1,0 +1,7 @@
+{
+  "plugin.name": "SystemMonitor Extras",
+  "widget.coolant": "Coolant temperature",
+  "widget.watt": "CPU power",
+  "widget.cpu_cores": "Per-core CPU",
+  "widget.cpu_panel": "CPU panel"
+}
