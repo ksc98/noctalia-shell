@@ -34,6 +34,7 @@
 #include "shell/bar/widgets/session_widget.h"
 #include "shell/bar/widgets/settings_widget.h"
 #include "shell/bar/widgets/spacer_widget.h"
+#include "shell/bar/widgets/sysmon_cores_widget.h"
 #include "shell/bar/widgets/sysmon_widget.h"
 #include "shell/bar/widgets/taskbar_widget.h"
 #include "shell/bar/widgets/test_widget.h"
@@ -513,6 +514,19 @@ std::unique_ptr<Widget> WidgetFactory::create(
         .glyph = wc != nullptr ? wc->getString("glyph", "") : std::string{},
     };
     auto widget = std::make_unique<SysmonWidget>(m_sysmon, m_configService, std::move(options));
+    widget->setContentScale(contentScale);
+    return widget;
+  }
+
+  if (type == "sysmon_cores") {
+    const int barWidth = static_cast<int>(wc != nullptr ? wc->getInt("bar_width", 3) : 3);
+    const int gap = static_cast<int>(wc != nullptr ? wc->getInt("gap", 1) : 1);
+    const bool showSystem = wc != nullptr ? wc->getBool("show_system", true) : true;
+    const bool smoothing = wc != nullptr ? wc->getBool("smoothing", true) : true;
+    const ColorSpec systemColor = wc != nullptr
+        ? wc->getColorSpec("system_color", colorSpecFromRole(ColorRole::Error), "widget." + name + ".system_color")
+        : colorSpecFromRole(ColorRole::Error);
+    auto widget = std::make_unique<SysmonCoresWidget>(m_sysmon, barWidth, gap, systemColor, showSystem, smoothing);
     widget->setContentScale(contentScale);
     return widget;
   }

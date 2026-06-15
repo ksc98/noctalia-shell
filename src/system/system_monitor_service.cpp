@@ -1117,6 +1117,7 @@ void SystemMonitorService::samplingLoop() {
   using Clock = std::chrono::steady_clock;
 
   auto prevCpu = readCpuTotals();
+  auto prevPerCore = readPerCoreCpuTotals();
   auto nextCpu = Clock::now();
   auto nextGpu = Clock::now();
   auto nextMemory = Clock::now();
@@ -1158,6 +1159,37 @@ void SystemMonitorService::samplingLoop() {
       }
       if (currentCpu.has_value()) {
         prevCpu = currentCpu;
+      }
+
+      if (auto curPerCore = readPerCoreCpuTotals();
+          curPerCore.has_value() && prevPerCore.has_value() && curPerCore->size() == prevPerCore->size()) {
+        std::vector<double> usage;
+        std::vector<double> systemPct;
+        usage.reserve(curPerCore->size());
+        systemPct.reserve(curPerCore->size());
+        for (std::size_t i = 0; i < curPerCore->size(); ++i) {
+          const auto& cur = (*curPerCore)[i];
+          const auto& prev = (*prevPerCore)[i];
+          const std::uint64_t totalDelta = cur.total - prev.total;
+          const std::uint64_t idleDelta = cur.idle - prev.idle;
+          const std::uint64_t sysDelta = cur.systemBusy - prev.systemBusy;
+          double busy = 0.0;
+          double sys = 0.0;
+          if (totalDelta > 0) {
+            busy = 100.0 * (1.0 - static_cast<double>(idleDelta) / static_cast<double>(totalDelta));
+            sys = 100.0 * static_cast<double>(sysDelta) / static_cast<double>(totalDelta);
+          }
+          usage.push_back(busy);
+          systemPct.push_back(sys);
+        }
+        {
+          std::lock_guard lock{m_statsMutex};
+          m_latest.perCoreUsagePercent = std::move(usage);
+          m_latest.perCoreSystemPercent = std::move(systemPct);
+        }
+        prevPerCore = std::move(curPerCore);
+      } else if (curPerCore.has_value()) {
+        prevPerCore = std::move(curPerCore);
       }
 
       if (const auto la = readLoadAvg(); la.has_value()) {
@@ -1363,6 +1395,40 @@ std::optional<SystemMonitorService::CpuTotals> SystemMonitorService::readCpuTota
   totals.idle = idle + iowait;
   totals.total = user + nice + system + idle + iowait + irq + softirq + steal;
   return totals;
+}
+
+std::optional<std::vector<SystemMonitorService::PerCoreCpu>> SystemMonitorService::readPerCoreCpuTotals() {
+  std::ifstream file{"/proc/stat"};
+  if (!file.is_open()) {
+    return std::nullopt;
+  }
+
+  std::string line;
+  if (!std::getline(file, line)) { // skip the aggregate "cpu" line
+    return std::nullopt;
+  }
+
+  std::vector<PerCoreCpu> cores;
+  while (std::getline(file, line)) {
+    if (line.compare(0, 3, "cpu") != 0) {
+      break; // per-core "cpuN" lines are contiguous and come first
+    }
+    std::istringstream iss{line};
+    std::string label;
+    std::uint64_t user = 0, nice = 0, system = 0, idle = 0, iowait = 0, irq = 0, softirq = 0, steal = 0;
+    iss >> label >> user >> nice >> system >> idle >> iowait >> irq >> softirq >> steal;
+
+    PerCoreCpu core{};
+    core.idle = idle + iowait;
+    core.systemBusy = system + irq + softirq;
+    core.total = user + nice + system + idle + iowait + irq + softirq + steal;
+    cores.push_back(core);
+  }
+
+  if (cores.empty()) {
+    return std::nullopt;
+  }
+  return cores;
 }
 
 std::optional<SystemMonitorService::MemData> SystemMonitorService::readMemoryKb() {

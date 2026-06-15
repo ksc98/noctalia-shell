@@ -78,6 +78,7 @@ namespace settings {
         {.type = "settings", .labelKey = "settings.widgets.types.settings", .glyph = "settings"},
         {.type = "spacer", .labelKey = "settings.widgets.types.spacer", .glyph = "arrows-horizontal"},
         {.type = "sysmon", .labelKey = "settings.widgets.types.sysmon", .glyph = "cpu-usage"},
+        {.type = "sysmon_cores", .labelKey = "settings.widgets.types.sysmon-cores", .glyph = "cpu-usage"},
         {.type = "taskbar", .labelKey = "settings.widgets.types.taskbar", .glyph = "apps"},
         {.type = "test", .labelKey = "settings.widgets.types.test", .glyph = "flask", .visibleInPicker = false},
         {.type = "theme_mode", .labelKey = "settings.widgets.types.theme-mode", .glyph = "theme-mode"},
@@ -815,6 +816,12 @@ namespace settings {
         minW.visibleWhen = WidgetSettingVisibility{"show_label", {"true"}};
         add(std::move(minW));
       }
+    } else if (type == "sysmon_cores") {
+      add(intSpec("bar_width", 3, 1.0, 40.0, 1.0));
+      add(intSpec("gap", 1, 0.0, 20.0, 1.0));
+      add(boolSpec("show_system", true));
+      add(boolSpec("smoothing", true));
+      add(colorSpec("system_color", "error"));
     } else if (type == "taskbar") {
       add(boolSpec("show_all_outputs", false));
       if (supportsTaskbarWorkspaceGrouping) {

@@ -35,6 +35,8 @@ struct SystemStats {
   std::optional<double> gpuUsagePercent;
   std::optional<std::uint64_t> gpuVramUsedBytes;
   std::optional<std::uint64_t> gpuVramTotalBytes;
+  std::vector<double> perCoreUsagePercent;  // busy % per logical core (0..100)
+  std::vector<double> perCoreSystemPercent; // system-time % per core (subset of busy)
   double netRxBytesPerSec{0.0};
   double netTxBytesPerSec{0.0};
   std::unordered_map<std::string, NetThroughput> netThroughputByInterface;
@@ -90,6 +92,12 @@ private:
     std::uint64_t idle{0};
   };
 
+  struct PerCoreCpu {
+    std::uint64_t total{0};
+    std::uint64_t idle{0};
+    std::uint64_t systemBusy{0}; // system + irq + softirq
+  };
+
   struct GpuVramData {
     std::uint64_t usedBytes{0};
     std::uint64_t totalBytes{0};
@@ -115,6 +123,7 @@ private:
   void logDetectedSources();
 
   [[nodiscard]] static std::optional<CpuTotals> readCpuTotals();
+  [[nodiscard]] static std::optional<std::vector<PerCoreCpu>> readPerCoreCpuTotals();
   struct MemData {
     std::uint64_t totalKb{0};
     std::uint64_t usedKb{0};
