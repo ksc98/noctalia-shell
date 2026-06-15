@@ -11,7 +11,7 @@ Branch: **`kyle`** (our stuff; `main` mirrors upstream). Remotes: `origin` = `ks
 ## Build / install / run
 
 ```sh
-cd ~/dev/noctalia-v5
+cd ~/dev/noctalia
 meson compile -C build-release            # fast incremental rebuild
 sudo meson install -C build-release       # installs to /usr/local (shadows AUR /usr/bin/noctalia)
 pkill -x noctalia; nohup noctalia -d &    # restart the shell on the live niri session
