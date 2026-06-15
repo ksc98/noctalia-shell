@@ -1,0 +1,171 @@
+id = "kyle/sysmon-extras"
+name = "SystemMonitor Extras"
+version = "0.1.0"
+min_noctalia = "5.0.0"
+author = "kyle"
+license = "MIT"
+description = """
+Fills the gaps between v5's native sysmon and the v4 SystemMonitor fork: a coolant-temp
+readout, a CPU power (watts) readout, a per-core CPU block-sparkline, and a desktop panel
+with per-core bars + a CPU/RAM history graph. Sensor stats already covered by v5's native
+sysmon (CPU%, CPU temp, GPU, RAM, swap, net, disk) are intentionally NOT duplicated here.
+"""
+
+# ── Bar widget: coolant temperature ──────────────────────────────────────────
+# Mirrors v4 keys coolantSensorChip / coolantSensorLabel / coolantSensorValueKey.
+[[widget]]
+id = "coolant"
+entry = "widgets/coolant.luau"
+
+  [[widget.setting]]
+  key = "coolantSensorChip"
+  type = "string"
+  label = "Coolant sensor chip"
+  description = "lm-sensors chip key as it appears in `sensors -j` (e.g. quadro-hid-3)."
+  default = ""
+
+  [[widget.setting]]
+  key = "coolantSensorLabel"
+  type = "string"
+  label = "Coolant sensor label"
+  description = "Sensor label under the chip (e.g. 'Coolant temp')."
+  default = ""
+
+  [[widget.setting]]
+  key = "coolantSensorValueKey"
+  type = "string"
+  label = "Coolant value key"
+  description = "JSON key under the label holding the reading (e.g. temp1_input)."
+  default = ""
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label = "Poll interval (ms)"
+  default = 2000
+  min = 250
+  max = 60000
+
+  [[widget.setting]]
+  key = "warnThreshold"
+  type = "int"
+  label = "Warn threshold (°C)"
+  default = 45
+  min = 0
+  max = 120
+
+  [[widget.setting]]
+  key = "critThreshold"
+  type = "int"
+  label = "Critical threshold (°C)"
+  default = 55
+  min = 0
+  max = 120
+
+# ── Bar widget: CPU power (watts) ─────────────────────────────────────────────
+# Mirrors v4 keys cpuWattSensorChip / cpuWattSensorLabel / cpuWattSensorValueKey.
+[[widget]]
+id = "watt"
+entry = "widgets/watt.luau"
+
+  [[widget.setting]]
+  key = "cpuWattSensorChip"
+  type = "string"
+  label = "Watt sensor chip"
+  description = "lm-sensors chip key in `sensors -j` exposing CPU package power."
+  default = ""
+
+  [[widget.setting]]
+  key = "cpuWattSensorLabel"
+  type = "string"
+  label = "Watt sensor label"
+  default = ""
+
+  [[widget.setting]]
+  key = "cpuWattSensorValueKey"
+  type = "string"
+  label = "Watt value key"
+  description = "JSON key holding the power reading (e.g. power1_input)."
+  default = ""
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label = "Poll interval (ms)"
+  default = 2000
+  min = 250
+  max = 60000
+
+  [[widget.setting]]
+  key = "warnThreshold"
+  type = "int"
+  label = "Warn threshold (W)"
+  default = 100
+  min = 0
+  max = 1000
+
+  [[widget.setting]]
+  key = "critThreshold"
+  type = "int"
+  label = "Critical threshold (W)"
+  default = 150
+  min = 0
+  max = 1000
+
+# ── Bar widget: per-core CPU block sparkline ──────────────────────────────────
+# The in-bar stand-in for v4's per-core chart: one Unicode block glyph per core,
+# exact per-core % in the tooltip. (A real stacked chart in the bar is not
+# expressible via the bar API — see the desktop panel below and the README.)
+[[widget]]
+id = "cpu_cores"
+entry = "widgets/cpu_cores.luau"
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label = "Sample interval (ms)"
+  description = "How often /proc/stat is read for new values (animation eases between)."
+  default = 500
+  min = 250
+  max = 10000
+
+  [[widget.setting]]
+  key = "frameMs"
+  type = "int"
+  label = "Animation frame interval (ms)"
+  description = "Redraw cadence for smoothing between samples. 33≈30fps, 16≈60fps. Lower = smoother, more CPU."
+  default = 33
+  min = 16
+  max = 1000
+
+  [[widget.setting]]
+  key = "smoothing"
+  type = "double"
+  label = "Smoothing (0..1 ease per frame)"
+  description = "Fraction each bar moves toward its target per frame. Lower = slower glide."
+  default = 0.35
+  min = 0.05
+  max = 1.0
+
+# ── Desktop widget: per-core bars + CPU/RAM history graph ─────────────────────
+# Closest achievable to v4's per-core stacked chart + RAM overlay, using the
+# desktop ui.* tree (ui.graph is available to desktop widgets, not bar widgets).
+[[desktop_widget]]
+id = "cpu_panel"
+entry = "desktop/cpu_panel.luau"
+
+  [[desktop_widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label = "Poll interval (ms)"
+  default = 1000
+  min = 250
+  max = 10000
+
+  [[desktop_widget.setting]]
+  key = "historySamples"
+  type = "int"
+  label = "History samples"
+  default = 60
+  min = 10
+  max = 240
