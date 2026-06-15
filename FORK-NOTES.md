@@ -5,8 +5,8 @@ widget: **`sysmon_cores`** — a per-core CPU bar chart (one vertical bar per lo
 in primary, system time stacked in error color), height-animated via the `AnimationManager` at
 vsync. Replaces the Luau-plugin SVG chart (which was capped ~30fps by image reloads).
 
-Branch: **`kyle`** (our stuff; `main` mirrors upstream). Remotes: `origin` = upstream noctalia-dev
-(pull only, do NOT push), `fork` = `ksc98/noctalia-shell` (push here: `git push fork kyle`).
+Branch: **`kyle`** (our stuff; `main` mirrors upstream). Remotes: `origin` = `ksc98/noctalia-shell`
+(your fork — push here: `git push origin kyle`), `upstream` = noctalia-dev (fetch to sync, never push).
 
 ## Build / install / run
 
@@ -50,8 +50,10 @@ Then put `cpu_cores` in a bar section (`start`/`center`/`end`).
 ## Rebase on upstream (when v5 / noctalia-git updates)
 
 ```sh
-git fetch origin
-git rebase origin/main          # re-apply the commit above; fix any conflicts in the files listed
+git fetch upstream
+git checkout main && git merge --ff-only upstream/main && git push origin main  # mirror upstream -> fork
+git checkout kyle && git rebase upstream/main   # re-apply our commits; fix conflicts in the files listed
+git push origin kyle --force-with-lease
 meson compile -C build-release && sudo meson install -C build-release
 ```
 Cleanest long-term: upstream the widget as a PR to noctalia-dev so there's no fork to maintain.
