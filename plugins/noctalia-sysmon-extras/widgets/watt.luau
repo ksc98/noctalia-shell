@@ -8,9 +8,10 @@ local valueKey = noctalia.getConfig("cpuWattSensorValueKey") or ""
 local warn = noctalia.getConfig("warnThreshold") or 100
 local crit = noctalia.getConfig("critThreshold") or 150
 local interval = noctalia.getConfig("pollIntervalMs") or 2000
+local glyph = noctalia.getConfig("glyph") or "bolt"
 
 noctalia.setUpdateInterval(interval)
-barWidget.setGlyph("bolt")
+barWidget.setGlyph(glyph)
 
 local lastText = "—"
 local lastValue = nil

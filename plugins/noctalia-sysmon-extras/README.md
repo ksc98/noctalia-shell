@@ -8,34 +8,52 @@ what v5 lacks:
 | Widget | Surface | What it does |
 |---|---|---|
 | `coolant` | bar | Coolant temp from `sensors -j`, keyed by chip/label/value (v4 parity), threshold-coloured |
-| `watt` | bar | CPU package power (W) from `sensors -j`, threshold-coloured |
+| `cpu_watt` | bar | CPU package power (W) from the RAPL energy counter — for AMD Zen, which has no power channel in `sensors -j`. Needs a udev rule (below) |
+| `gpu_watt` | bar | GPU power (W) from `nvidia-smi --query-gpu=power.draw` |
+| `watt` | bar | Generic power (W) from `sensors -j`, keyed by chip/label/value. Use for any sensor that exposes `power*_input` (e.g. an amdgpu iGPU's PPT) |
 | `cpu_cores` | bar | Per-core load as a Unicode block sparkline (`▁▂▃▄▅▆▇█`), exact %s in the tooltip |
 | `cpu_panel` | desktop | Per-core bars + a CPU/RAM history graph (the RAM overlay) |
 
-> Status: **written against v5's plugin API by reading the source; not yet run.** v5 is not
-> built/installed on this machine (we are *preparing* the port, not switching the desktop).
-> Treat everything here as unverified until the live pass — see "Not yet verified" below.
+## Install
 
-## Install (once v5 is live)
+noctalia loads this plugin from a **path source** (`config.toml [[plugins.source]] kind = "path"`,
+location `~/.local/share/noctalia-dev-plugins`). That dir's `sysmon-extras` entry is a **symlink to
+this repo dir**, so the repo is the single source of truth. From the repo root, `just plugin` ensures
+the symlink and restarts the shell. Then enable the plugin and add the widgets to a bar section.
+
+This machine's config (`~/.config/noctalia/config.toml`):
+
+```toml
+[widget.coolant]
+type = "kyle/sysmon-extras:coolant"
+coolantSensorChip = "quadro-hid-3"   # prefix-matched against the `sensors -j` chip key
+coolantSensorLabel = "Sensor 2"
+coolantSensorValueKey = "temp2_input"
+
+[widget.cpu_watt]
+type = "kyle/sysmon-extras:cpu_watt"
+glyph = "cpu"
+
+[widget.gpu_watt]
+type = "kyle/sysmon-extras:gpu_watt"
+glyph = "bolt"
+```
+
+### cpu_watt: RAPL must be user-readable
+
+`cpu_watt` differentiates the powercap energy counter (`W = ΔµJ / Δs`), but `energy_uj` is root-only by
+default (the Platypus side-channel mitigation), so the widget shows `perm?` until a udev rule relaxes it.
+Install the bundled rule once:
 
 ```sh
-# v5 looks for local plugins under ~/.local/share/noctalia/plugins/<author>/<plugin>/
-mkdir -p ~/.local/share/noctalia/plugins/kyle
-ln -s "$PWD/plugins/noctalia-sysmon-extras" \
-      ~/.local/share/noctalia/plugins/kyle/sysmon-extras
+sudo cp contrib/99-rapl-readable.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger --subsystem-match=powercap --action=add
+sudo chmod a+r /sys/class/powercap/intel-rapl:*/energy_uj   # apply now, no reboot
 ```
 
-Then enable the plugin in v5's config and add the widget entries to the bar / desktop. Configure
-the coolant widget with the same values the v4 fork used on this machine:
-
-```
-coolantSensorChip     = "quadro-hid-3"
-coolantSensorLabel    = "Sensor 2"
-coolantSensorValueKey = "temp2_input"
-```
-
-(The watt sensor was unset in v4 — fill in `cpuWattSensorChip/Label/ValueKey` from your own
-`sensors -j` output if you want the watt readout.)
+(The rule re-applies on every boot. `intel-rapl` is the powercap driver name on AMD too — RAPL is not
+Intel-only.)
 
 ## What maps cleanly
 

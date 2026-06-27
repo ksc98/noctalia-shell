@@ -45,7 +45,7 @@ local function refresh()
     local l = c[label]; if type(l) ~= "table" then return end
     local v = l[valueKey]; if type(v) ~= "number" then return end
     lastValue = v
-    lastText = string.format("%d°C", math.floor(v + 0.5))
+    lastText = string.format("%.2f°C", v)
   end)
 end
 

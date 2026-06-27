@@ -1,0 +1,10 @@
+# Make the RAPL energy counter readable by non-root so the cpu_watt widget can
+# compute CPU package power (AMD Zen exposes no power channel in `sensors -j`).
+# Relaxes the Platypus side-channel mitigation; acceptable on a single-user desktop.
+#
+# Install:
+#   sudo cp 99-rapl-readable.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger --subsystem-match=powercap --action=add
+#   sudo chmod a+r /sys/class/powercap/intel-rapl:*/energy_uj   # apply now, no reboot
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl:*", ACTION=="add", RUN+="/usr/bin/chmod a+r /sys/class/powercap/%k/energy_uj"

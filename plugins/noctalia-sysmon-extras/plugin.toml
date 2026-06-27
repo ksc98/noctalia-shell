@@ -62,8 +62,10 @@ entry = "widgets/coolant.luau"
   min = 0
   max = 120
 
-# ── Bar widget: CPU power (watts) ─────────────────────────────────────────────
-# Mirrors v4 keys cpuWattSensorChip / cpuWattSensorLabel / cpuWattSensorValueKey.
+# ── Bar widget: power (watts) from `sensors -j` ───────────────────────────────
+# Generic chip/label/value watt readout (v4 keys cpuWattSensorChip/Label/ValueKey).
+# AMD Zen exposes no CPU power in sensors, so on this machine this instance reads the
+# GPU's amdgpu PPT; CPU package power comes from the RAPL-based `cpu_watt` widget below.
 [[widget]]
 id = "watt"
 entry = "widgets/watt.luau"
@@ -111,6 +113,97 @@ entry = "widgets/watt.luau"
   default = 150
   min = 0
   max = 1000
+
+  [[widget.setting]]
+  key = "glyph"
+  type = "string"
+  label = "Glyph"
+  description = "Tabler icon name shown before the value (e.g. bolt, cpu)."
+  default = "bolt"
+
+# ── Bar widget: CPU package power (watts) via RAPL ────────────────────────────
+# AMD Zen has no power sensor in `sensors -j`, so read the powercap energy counter
+# and differentiate it. Requires `energy_uj` to be user-readable (udev rule — see
+# README / project CLAUDE.md); shows "perm?" until that is in place.
+[[widget]]
+id = "cpu_watt"
+entry = "widgets/cpu_watt.luau"
+
+  [[widget.setting]]
+  key = "raplPath"
+  type = "string"
+  label = "RAPL package dir"
+  description = "powercap dir for the CPU package (name == package-0)."
+  default = "/sys/class/powercap/intel-rapl:0"
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label = "Poll interval (ms)"
+  default = 2000
+  min = 250
+  max = 60000
+
+  [[widget.setting]]
+  key = "warnThreshold"
+  type = "int"
+  label = "Warn threshold (W)"
+  default = 140
+  min = 0
+  max = 1000
+
+  [[widget.setting]]
+  key = "critThreshold"
+  type = "int"
+  label = "Critical threshold (W)"
+  default = 180
+  min = 0
+  max = 1000
+
+  [[widget.setting]]
+  key = "glyph"
+  type = "string"
+  label = "Glyph"
+  description = "Tabler icon name shown before the value."
+  default = "cpu"
+
+# ── Bar widget: GPU power (watts) via nvidia-smi ──────────────────────────────
+# The discrete GPU's power isn't in `sensors -j`; query nvidia-smi's power.draw.
+# Shows "n/a" if nvidia-smi is absent or no NVIDIA GPU is present.
+[[widget]]
+id = "gpu_watt"
+entry = "widgets/gpu_watt.luau"
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label = "Poll interval (ms)"
+  default = 2000
+  min = 250
+  max = 60000
+
+  [[widget.setting]]
+  key = "warnThreshold"
+  type = "int"
+  label = "Warn threshold (W)"
+  default = 300
+  min = 0
+  max = 1000
+
+  [[widget.setting]]
+  key = "critThreshold"
+  type = "int"
+  label = "Critical threshold (W)"
+  default = 400
+  min = 0
+  max = 1000
+
+  [[widget.setting]]
+  key = "glyph"
+  type = "string"
+  label = "Glyph"
+  description = "Tabler icon name shown before the value."
+  default = "bolt"
 
 # ── Bar widget: per-core CPU block sparkline ──────────────────────────────────
 # The in-bar stand-in for v4's per-core chart: one Unicode block glyph per core,
