@@ -131,9 +131,16 @@ link-plugins:
 restart:
     #!/usr/bin/env bash
     set -euo pipefail
+    # A stale HYPRLAND_INSTANCE_SIGNATURE (shell older than the compositor) makes the new
+    # instance silently fall back from the hyprland IPC backend to ext-workspace.
+    hypr_dir="/run/user/$(id -u)/hypr"
+    if [[ -d "$hypr_dir" ]]; then
+        export HYPRLAND_INSTANCE_SIGNATURE="$(ls -t "$hypr_dir" | head -1)"
+    fi
     pkill -x noctalia || true
-    sleep 1
-    nohup noctalia -d >/dev/null 2>&1 &
+    # Graceful shutdown takes >1s; starting too early exits "noctalia is already running".
+    for _ in $(seq 1 40); do pgrep -x noctalia >/dev/null || break; sleep 0.25; done
+    setsid -f nohup noctalia -d >/dev/null 2>&1
     sleep 1
     if pgrep -x noctalia >/dev/null; then echo "noctalia restarted (pid $(pgrep -x noctalia))"; else echo "noctalia failed to start" >&2; exit 1; fi
 
