@@ -2,6 +2,85 @@
   "plugin.name": "SystemMonitor Extras",
   "widget.coolant": "Coolant temperature",
   "widget.watt": "CPU power",
+  "widget.cpu_watt": "CPU usage + power",
+  "widget.gpu_watt": "GPU usage + power",
   "widget.cpu_cores": "Per-core CPU",
-  "widget.cpu_panel": "CPU panel"
+  "widget.cpu_panel": "CPU panel",
+  "settings": {
+    "coolant": {
+      "chip": {
+        "label": "Coolant sensor chip",
+        "description": "lm-sensors chip key as it appears in `sensors -j` (e.g. quadro-hid-3)."
+      },
+      "sensor_label": {
+        "label": "Coolant sensor label",
+        "description": "Sensor label under the chip (e.g. 'Coolant temp')."
+      },
+      "value_key": {
+        "label": "Coolant value key",
+        "description": "JSON key under the label holding the reading (e.g. temp1_input)."
+      },
+      "poll": { "label": "Poll interval (ms)" },
+      "warn": { "label": "Warn threshold (°C)" },
+      "crit": { "label": "Critical threshold (°C)" }
+    },
+    "watt": {
+      "chip": {
+        "label": "Watt sensor chip",
+        "description": "lm-sensors chip key in `sensors -j` exposing CPU package power."
+      },
+      "sensor_label": { "label": "Watt sensor label" },
+      "value_key": {
+        "label": "Watt value key",
+        "description": "JSON key holding the power reading (e.g. power1_input)."
+      },
+      "poll": { "label": "Poll interval (ms)" },
+      "warn": { "label": "Warn threshold (W)" },
+      "crit": { "label": "Critical threshold (W)" },
+      "glyph": {
+        "label": "Glyph",
+        "description": "Tabler icon name shown before the value (e.g. bolt, cpu)."
+      }
+    },
+    "cpu_watt": {
+      "rapl_path": {
+        "label": "RAPL package dir",
+        "description": "powercap dir for the CPU package (name == package-0)."
+      },
+      "poll": { "label": "Poll interval (ms)" },
+      "warn": { "label": "Warn threshold (W)" },
+      "crit": { "label": "Critical threshold (W)" },
+      "glyph": {
+        "label": "Glyph",
+        "description": "Tabler icon name shown before the value."
+      }
+    },
+    "gpu_watt": {
+      "poll": { "label": "Poll interval (ms)" },
+      "warn": { "label": "Warn threshold (W)" },
+      "crit": { "label": "Critical threshold (W)" },
+      "glyph": {
+        "label": "Glyph",
+        "description": "Tabler icon name shown before the value."
+      }
+    },
+    "cpu_cores": {
+      "poll": {
+        "label": "Sample interval (ms)",
+        "description": "How often /proc/stat is read for new values (animation eases between)."
+      },
+      "frame": {
+        "label": "Animation frame interval (ms)",
+        "description": "Redraw cadence for smoothing between samples. 33≈30fps, 16≈60fps. Lower = smoother, more CPU."
+      },
+      "smoothing": {
+        "label": "Smoothing (0..1 ease per frame)",
+        "description": "Fraction each bar moves toward its target per frame. Lower = slower glide."
+      }
+    },
+    "cpu_panel": {
+      "poll": { "label": "Poll interval (ms)" },
+      "history": { "label": "History samples" }
+    }
+  }
 }

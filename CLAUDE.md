@@ -64,7 +64,9 @@ grim -g "1200,0 700x44" /tmp/bar.png   # center region (clock/coolant/watt); adj
     for any `power*_input` sensor, e.g. the amdgpu iGPU PPT).
   - `widgets/cpu_cores.luau` — per-core load block sparkline.
   - `desktop/cpu_panel.luau` — desktop per-core bars + CPU/RAM history graph.
-  - `plugin.toml` — manifest: widget ids + their config `[[widget.setting]]` schema.
+  - `plugin.toml` — manifest: `plugin_api` version, widget ids + their config `[[widget.setting]]`
+    schema. Setting labels/descriptions are translation keys (`label_key`/`description_key`) resolved
+    against `translations/en.json`; literal `label`/`description` are rejected by the manifest parser.
 - `src/scripting/` — plugin host (Luau VM, bindings, manager, registry). Path sources are read directly
   from disk; only git sources get "materialized" under the state dir.
 - `src/system/system_monitor_service.{h,cpp}` — native per-core CPU sampling (`sysmon_cores`).
