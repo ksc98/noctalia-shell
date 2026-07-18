@@ -1,4 +1,5 @@
--- CPU package power (watts) bar widget, via the RAPL energy counter.
+-- CPU usage % + package power (watts) bar widget ("3% · 40W"), via /proc/stat
+-- and the RAPL energy counter.
 --
 -- AMD Zen exposes no power reading in `sensors -j` (k10temp is temps only), so we
 -- read the powercap energy counter and differentiate it: W = ΔµJ / Δs. The counter
@@ -18,23 +19,43 @@ local glyph = noctalia.getConfig("glyph") or "cpu"
 noctalia.setUpdateInterval(interval)
 barWidget.setGlyph(glyph)
 
-local lastText = "—"
+local lastWatt = "—"
+local lastPct = nil -- "3%" once /proc/stat has two samples
 local lastValue = nil
 local prevE = nil -- µJ
 local prevU = nil -- s (uptime)
+local prevBusy = nil -- /proc/stat jiffies
+local prevTotal = nil
 
--- One shell read, atomic-ish: energy | wrap-range | monotonic uptime seconds.
+-- One shell read, atomic-ish: energy | wrap-range | monotonic uptime seconds | cpu stat line.
 local cmd = string.format(
-  "printf '%%s|%%s|%%s\\n' \"$(cat %s/energy_uj 2>/dev/null)\" \"$(cat %s/max_energy_range_uj 2>/dev/null)\" \"$(cut -d' ' -f1 /proc/uptime)\"",
+  "printf '%%s|%%s|%%s|%%s\\n' \"$(cat %s/energy_uj 2>/dev/null)\" \"$(cat %s/max_energy_range_uj 2>/dev/null)\" \"$(cut -d' ' -f1 /proc/uptime)\" \"$(head -1 /proc/stat)\"",
   rapl, rapl)
 
 local function refresh()
   noctalia.runAsync(cmd, function(res)
     if res.exitCode ~= 0 or res.stdout == "" then return end
-    local e, rng, u = res.stdout:match("(%d*)|(%d*)|([%d%.]+)")
+    local e, rng, u, stat = res.stdout:match("(%d*)|(%d*)|([%d%.]+)|(.*)")
     if not u then return end
+
+    -- Aggregate usage %: busy/total jiffy deltas from the "cpu " line
+    -- (user nice system idle iowait irq softirq steal ...).
+    if stat then
+      local f = {}
+      for n in stat:gmatch("%d+") do table.insert(f, tonumber(n)) end
+      if #f >= 8 then
+        local busy = f[1] + f[2] + f[3] + f[6] + f[7] + f[8]
+        local total = busy + f[4] + f[5]
+        if prevBusy and total > prevTotal then
+          local pct = (busy - prevBusy) / (total - prevTotal) * 100
+          lastPct = string.format("%d%%", math.floor(pct + 0.5))
+        end
+        prevBusy = busy; prevTotal = total
+      end
+    end
+
     if e == "" then -- energy_uj unreadable: udev rule not applied yet
-      lastText = "perm?"
+      lastWatt = "perm?"
       lastValue = nil
       return
     end
@@ -45,7 +66,7 @@ local function refresh()
       local dt = u - prevU
       if dt > 0 then
         lastValue = (de / 1e6) / dt
-        lastText = string.format("%dW", math.floor(lastValue + 0.5))
+        lastWatt = string.format("%dW", math.floor(lastValue + 0.5))
       end
     end
     prevE = e; prevU = u
@@ -53,7 +74,7 @@ local function refresh()
 end
 
 function update()
-  barWidget.setText(lastText)
+  barWidget.setText(lastPct and (lastPct .. " · " .. lastWatt) or lastWatt)
   if lastValue then
     if lastValue >= crit then
       barWidget.setColor("error")

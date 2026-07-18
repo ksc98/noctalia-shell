@@ -54,10 +54,12 @@ grim -g "1200,0 700x44" /tmp/bar.png   # center region (clock/coolant/watt); adj
 
 - `plugins/noctalia-sysmon-extras/` — the Luau plugin (symlinked into the path-source dir by `just plugin`).
   - `widgets/coolant.luau` — coolant temp from `sensors -j`, keyed by chip/label/value; threshold-coloured.
-  - `widgets/cpu_watt.luau` — CPU package power via the RAPL energy counter (AMD Zen has no power in
-    `sensors -j`). Needs `energy_uj` user-readable — see `contrib/99-rapl-readable.rules` (udev rule;
-    installed to `/etc/udev/rules.d/`, re-applies on boot). Shows `perm?` if the rule is missing.
-  - `widgets/gpu_watt.luau` — GPU power via `nvidia-smi power.draw` (the discrete card; not in `sensors -j`).
+  - `widgets/cpu_watt.luau` — CPU usage % + package power ("3% · 42W") via /proc/stat and the RAPL energy
+    counter (AMD Zen has no power in `sensors -j`). Needs `energy_uj` user-readable — see
+    `contrib/99-rapl-readable.rules` (udev rule; installed to `/etc/udev/rules.d/`, re-applies on boot).
+    Shows `perm?` if the rule is missing.
+  - `widgets/gpu_watt.luau` — GPU utilization % + power ("33% · 57W") via `nvidia-smi
+    power.draw,utilization.gpu` (the discrete card; not in `sensors -j`).
   - `widgets/watt.luau` — generic `sensors -j` watt readout (chip/label/value); unused on this box (kept
     for any `power*_input` sensor, e.g. the amdgpu iGPU PPT).
   - `widgets/cpu_cores.luau` — per-core load block sparkline.

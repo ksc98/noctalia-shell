@@ -1,4 +1,4 @@
--- GPU power (watts) bar widget, via `nvidia-smi`.
+-- GPU utilization % + power (watts) bar widget ("5% · 55W"), via `nvidia-smi`.
 --
 -- The discrete GPU's power isn't in `sensors -j` (the nvidia driver doesn't export a
 -- hwmon power channel), so query nvidia-smi directly. `power.draw` is instantaneous
@@ -15,7 +15,7 @@ barWidget.setGlyph(glyph)
 local lastText = "—"
 local lastValue = nil
 
-local cmd = "nvidia-smi --query-gpu=power.draw --format=csv,noheader,nounits 2>/dev/null"
+local cmd = "nvidia-smi --query-gpu=power.draw,utilization.gpu --format=csv,noheader,nounits 2>/dev/null"
 
 local function refresh()
   noctalia.runAsync(cmd, function(res)
@@ -24,10 +24,13 @@ local function refresh()
       lastValue = nil
       return
     end
-    local w = tonumber(res.stdout:match("([%d%.]+)"))
+    local w, util = res.stdout:match("([%d%.]+),%s*([%d%.]+)")
+    w = tonumber(w)
     if not w then return end
     lastValue = w
-    lastText = string.format("%dW", math.floor(w + 0.5))
+    local watt = string.format("%dW", math.floor(w + 0.5))
+    util = tonumber(util)
+    lastText = util and string.format("%d%% · %s", math.floor(util + 0.5), watt) or watt
   end)
 end
 
