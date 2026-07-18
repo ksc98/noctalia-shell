@@ -908,9 +908,12 @@ namespace settings {
     } else if (type == "sysmon_cores") {
       add(intSpec("bar_width", 3, 1.0, 40.0, 1.0));
       add(intSpec("gap", 1, 0.0, 20.0, 1.0));
+      add(intSpec("v_padding", 6, 0.0, 20.0, 1.0));
+      add(boolSpec("show_border", true));
       add(boolSpec("show_system", true));
       add(boolSpec("smoothing", true));
       add(colorSpec("system_color", "error"));
+      add(colorSpec("border_color", "outline"));
     } else if (type == "taskbar") {
       // Windows: what the taskbar lists and how each window tile looks.
       add(withGroup(boolSpec("enable_scroll", true), "taskbar.windows"));

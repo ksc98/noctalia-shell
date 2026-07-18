@@ -20,7 +20,8 @@ struct wl_output;
 class SysmonCoresWidget : public Widget {
 public:
   SysmonCoresWidget(
-      SystemMonitorService* monitor, int barWidth, int gap, ColorSpec systemColor, bool showSystem, bool smoothing
+      SystemMonitorService* monitor, int barWidth, int gap, int vPadding, ColorSpec systemColor, ColorSpec borderColor,
+      bool showBorder, bool showSystem, bool smoothing
   );
   ~SysmonCoresWidget() override;
 
@@ -38,10 +39,14 @@ private:
   SystemMonitorService* m_monitor;
   int m_barWidth;
   int m_gap;
+  int m_vPadding;
   ColorSpec m_systemColor;
+  ColorSpec m_borderColor;
+  bool m_showBorder;
   bool m_showSystem;
   bool m_smoothing;
 
+  Box* m_borderBox = nullptr;
   std::vector<Box*> m_userBars;
   std::vector<Box*> m_sysBars;
   std::vector<float> m_prevUser, m_targetUser, m_curUser;
@@ -53,6 +58,8 @@ private:
 
   float m_barWpx = 3.0f;
   float m_gapPx = 1.0f;
+  float m_padPx = 0.0f;
+  float m_chartX = 0.0f;
   float m_heightPx = 0.0f;
 
   Timer m_updateTimer;

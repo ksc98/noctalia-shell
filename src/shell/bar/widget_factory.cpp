@@ -539,12 +539,19 @@ std::unique_ptr<Widget> WidgetFactory::create(
   if (type == "sysmon_cores") {
     const int barWidth = static_cast<int>(wc != nullptr ? wc->getInt("bar_width", 3) : 3);
     const int gap = static_cast<int>(wc != nullptr ? wc->getInt("gap", 1) : 1);
+    const int vPadding = static_cast<int>(wc != nullptr ? wc->getInt("v_padding", 6) : 6);
+    const bool showBorder = wc != nullptr ? wc->getBool("show_border", true) : true;
     const bool showSystem = wc != nullptr ? wc->getBool("show_system", true) : true;
     const bool smoothing = wc != nullptr ? wc->getBool("smoothing", true) : true;
     const ColorSpec systemColor = wc != nullptr
         ? wc->getColorSpec("system_color", colorSpecFromRole(ColorRole::Error), "widget." + name + ".system_color")
         : colorSpecFromRole(ColorRole::Error);
-    auto widget = std::make_unique<SysmonCoresWidget>(m_sysmon, barWidth, gap, systemColor, showSystem, smoothing);
+    const ColorSpec borderColor = wc != nullptr
+        ? wc->getColorSpec("border_color", colorSpecFromRole(ColorRole::Outline), "widget." + name + ".border_color")
+        : colorSpecFromRole(ColorRole::Outline);
+    auto widget = std::make_unique<SysmonCoresWidget>(
+        m_sysmon, barWidth, gap, vPadding, systemColor, borderColor, showBorder, showSystem, smoothing
+    );
     widget->setContentScale(contentScale);
     return widget;
   }

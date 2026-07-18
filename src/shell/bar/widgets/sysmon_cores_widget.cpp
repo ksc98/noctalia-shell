@@ -12,10 +12,11 @@
 #include <string>
 
 SysmonCoresWidget::SysmonCoresWidget(
-    SystemMonitorService* monitor, int barWidth, int gap, ColorSpec systemColor, bool showSystem, bool smoothing
+    SystemMonitorService* monitor, int barWidth, int gap, int vPadding, ColorSpec systemColor, ColorSpec borderColor,
+    bool showBorder, bool showSystem, bool smoothing
 )
-    : m_monitor(monitor), m_barWidth(barWidth), m_gap(gap), m_systemColor(systemColor), m_showSystem(showSystem),
-      m_smoothing(smoothing) {}
+    : m_monitor(monitor), m_barWidth(barWidth), m_gap(gap), m_vPadding(vPadding), m_systemColor(systemColor),
+      m_borderColor(borderColor), m_showBorder(showBorder), m_showSystem(showSystem), m_smoothing(smoothing) {}
 
 SysmonCoresWidget::~SysmonCoresWidget() {
   if (m_animations != nullptr) {
@@ -36,6 +37,10 @@ void SysmonCoresWidget::ensureBars(std::size_t n) {
   auto* container = root();
   if (container == nullptr) {
     return;
+  }
+  if (m_showBorder) {
+    container->addChild(ui::box({.out = &m_borderBox}));
+    m_borderBox->setBorder(m_borderColor, 1.0f);
   }
   for (std::size_t i = 0; i < n; ++i) {
     Box* user = nullptr;
@@ -63,18 +68,18 @@ void SysmonCoresWidget::updateBars() {
     m_curUser[i] = user;
     m_curSys[i] = sys;
 
-    const float x = static_cast<float>(i) * (m_barWpx + m_gapPx);
+    const float x = m_chartX + static_cast<float>(i) * (m_barWpx + m_gapPx);
     float userH = std::clamp(user, 0.0f, 1.0f) * H;
     float sysH = std::clamp(sys, 0.0f, 1.0f) * H;
     if (userH + sysH > H) {
       sysH = std::max(0.0f, H - userH);
     }
     if (m_userBars[i] != nullptr) {
-      m_userBars[i]->setPosition(x, H - userH);
+      m_userBars[i]->setPosition(x, m_padPx + H - userH);
       m_userBars[i]->setSize(m_barWpx, userH);
     }
     if (m_sysBars[i] != nullptr) {
-      m_sysBars[i]->setPosition(x, H - userH - sysH);
+      m_sysBars[i]->setPosition(x, m_padPx + H - userH - sysH);
       m_sysBars[i]->setSize(m_barWpx, sysH);
     }
   }
@@ -83,14 +88,26 @@ void SysmonCoresWidget::updateBars() {
 void SysmonCoresWidget::doLayout(Renderer& /*renderer*/, float /*containerWidth*/, float containerHeight) {
   m_barWpx = std::max(1.0f, static_cast<float>(m_barWidth) * m_contentScale);
   m_gapPx = std::max(0.0f, static_cast<float>(m_gap) * m_contentScale);
-  m_heightPx = containerHeight;
+  m_padPx = std::max(0.0f, static_cast<float>(m_vPadding) * m_contentScale);
+  m_heightPx = std::max(1.0f, containerHeight - 2.0f * m_padPx);
+  m_chartX = m_showBorder ? std::round(3.0f * m_contentScale) : 0.0f;
   updateBars();
 
   auto* rootNode = root();
   if (rootNode != nullptr) {
     const std::size_t n = m_userBars.size();
-    const float w = n > 0 ? static_cast<float>(n) * (m_barWpx + m_gapPx) - m_gapPx : 0.0f;
+    const float barsW = n > 0 ? static_cast<float>(n) * (m_barWpx + m_gapPx) - m_gapPx : 0.0f;
+    const float w = barsW > 0.0f ? barsW + 2.0f * m_chartX : 0.0f;
     rootNode->setSize(std::max(0.0f, w), containerHeight);
+
+    if (m_borderBox != nullptr) {
+      // Frame the 0-100% chart area: full bars touch the top edge, with a little air on the sides.
+      const float inset = std::min(std::round(3.0f * m_contentScale), m_padPx);
+      m_borderBox->setPosition(0.0f, m_padPx - inset);
+      m_borderBox->setSize(w, m_heightPx + 2.0f * inset);
+      m_borderBox->setRadius(std::round(3.0f * m_contentScale));
+      m_borderBox->setVisible(n > 0);
+    }
   }
 }
 
