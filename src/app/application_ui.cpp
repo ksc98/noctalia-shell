@@ -71,6 +71,7 @@
 #include "shell/session/session_ipc.h"
 #include "shell/session/session_panel.h"
 #include "shell/setup_wizard/setup_wizard_panel.h"
+#include "shell/sysmon/sysmon_processes_panel.h"
 #include "shell/test/test_panel.h"
 #include "shell/tooltip/tooltip_manager.h"
 #include "shell/tray/tray_drawer_panel.h"
@@ -528,6 +529,7 @@ void Application::initPanelManagerAndPanels() {
   syncClipboardService();
   m_panelManager.registerPanel("session", std::make_unique<SessionPanel>(&m_configService, m_sessionActionRunner));
   m_panelManager.registerPanel("test", std::make_unique<TestPanel>());
+  m_panelManager.registerPanel("sysmon-processes", std::make_unique<SysmonProcessesPanel>());
   m_panelManager.registerPanel(
       "control-center",
       std::make_unique<ControlCenterPanel>(ControlCenterServices{

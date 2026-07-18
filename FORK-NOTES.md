@@ -44,7 +44,11 @@ Then put `cpu_cores` in a bar section (`start`/`center`/`end`).
 - `src/shell/bar/widget_factory.cpp` — include + `if (type == "sysmon_cores")` branch.
 - `src/shell/settings/widget_settings_registry.cpp` — `kWidgetTypeSpecs` entry + `widgetSettingSpecs`
   branch (required or `config validate` rejects the keys).
-- `meson.build` — add `sysmon_cores_widget.cpp` to `_noctalia_sources`.
+- `src/shell/sysmon/sysmon_processes_panel.{h,cpp}` — NEW attached dropdown panel ("sysmon-processes"):
+  top-10 processes by CPU from /proc scans, opened by clicking the sysmon_cores widget. First paint is
+  since-boot averages; a 1.5s Timer switches to interval percentages (top-style, 100% = one core).
+- `src/app/application_ui.cpp` — include + `registerPanel("sysmon-processes", ...)`.
+- `meson.build` — add `sysmon_cores_widget.cpp` + `sysmon_processes_panel.cpp` to `_noctalia_sources`.
 - `assets/translations/en.json` — `settings.widgets.types.sysmon-cores` label.
 
 ## Rebase on upstream (when v5 / noctalia-git updates)

@@ -25,7 +25,9 @@ SysmonCoresWidget::~SysmonCoresWidget() {
 }
 
 void SysmonCoresWidget::create() {
-  setRoot(std::make_unique<InputArea>());
+  auto area = std::make_unique<InputArea>();
+  area->setOnClick([this](const InputArea::PointerData& /*data*/) { requestPanelToggle("sysmon-processes"); });
+  setRoot(std::move(area));
   // Poll the (slowly-sampled) service; the animation smooths between samples.
   m_updateTimer.startRepeating(std::chrono::milliseconds(250), [this]() { requestUpdate(); });
 }
