@@ -1,0 +1,252 @@
+id = "kyle/sysmon-extras"
+name = "SystemMonitor Extras"
+version = "0.1.0"
+plugin_api = 23
+author = "kyle"
+license = "MIT"
+description = """
+Fills the gaps between v5's native sysmon and the v4 SystemMonitor fork: a coolant-temp
+readout, a CPU power (watts) readout, a per-core CPU block-sparkline, and a desktop panel
+with per-core bars + a CPU/RAM history graph. Sensor stats already covered by v5's native
+sysmon (CPU%, CPU temp, GPU, RAM, swap, net, disk) are intentionally NOT duplicated here.
+"""
+
+# Setting labels/descriptions live in translations/en.json under settings.<widget>.<key>.
+
+# ── Bar widget: coolant temperature ──────────────────────────────────────────
+# Mirrors v4 keys coolantSensorChip / coolantSensorLabel / coolantSensorValueKey.
+[[widget]]
+id = "coolant"
+entry = "widgets/coolant.luau"
+
+  [[widget.setting]]
+  key = "coolantSensorChip"
+  type = "string"
+  label_key = "settings.coolant.chip.label"
+  description_key = "settings.coolant.chip.description"
+  default = ""
+
+  [[widget.setting]]
+  key = "coolantSensorLabel"
+  type = "string"
+  label_key = "settings.coolant.sensor_label.label"
+  description_key = "settings.coolant.sensor_label.description"
+  default = ""
+
+  [[widget.setting]]
+  key = "coolantSensorValueKey"
+  type = "string"
+  label_key = "settings.coolant.value_key.label"
+  description_key = "settings.coolant.value_key.description"
+  default = ""
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label_key = "settings.coolant.poll.label"
+  default = 2000
+  min = 250
+  max = 60000
+
+  [[widget.setting]]
+  key = "warnThreshold"
+  type = "int"
+  label_key = "settings.coolant.warn.label"
+  default = 45
+  min = 0
+  max = 120
+
+  [[widget.setting]]
+  key = "critThreshold"
+  type = "int"
+  label_key = "settings.coolant.crit.label"
+  default = 55
+  min = 0
+  max = 120
+
+# ── Bar widget: power (watts) from `sensors -j` ───────────────────────────────
+# Generic chip/label/value watt readout (v4 keys cpuWattSensorChip/Label/ValueKey).
+# AMD Zen exposes no CPU power in sensors, so on this machine this instance reads the
+# GPU's amdgpu PPT; CPU package power comes from the RAPL-based `cpu_watt` widget below.
+[[widget]]
+id = "watt"
+entry = "widgets/watt.luau"
+
+  [[widget.setting]]
+  key = "cpuWattSensorChip"
+  type = "string"
+  label_key = "settings.watt.chip.label"
+  description_key = "settings.watt.chip.description"
+  default = ""
+
+  [[widget.setting]]
+  key = "cpuWattSensorLabel"
+  type = "string"
+  label_key = "settings.watt.sensor_label.label"
+  default = ""
+
+  [[widget.setting]]
+  key = "cpuWattSensorValueKey"
+  type = "string"
+  label_key = "settings.watt.value_key.label"
+  description_key = "settings.watt.value_key.description"
+  default = ""
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label_key = "settings.watt.poll.label"
+  default = 2000
+  min = 250
+  max = 60000
+
+  [[widget.setting]]
+  key = "warnThreshold"
+  type = "int"
+  label_key = "settings.watt.warn.label"
+  default = 100
+  min = 0
+  max = 1000
+
+  [[widget.setting]]
+  key = "critThreshold"
+  type = "int"
+  label_key = "settings.watt.crit.label"
+  default = 150
+  min = 0
+  max = 1000
+
+  [[widget.setting]]
+  key = "glyph"
+  type = "string"
+  label_key = "settings.watt.glyph.label"
+  description_key = "settings.watt.glyph.description"
+  default = "bolt"
+
+# ── Bar widget: CPU package power (watts) via RAPL ────────────────────────────
+# AMD Zen has no power sensor in `sensors -j`, so read the powercap energy counter
+# and differentiate it. Requires `energy_uj` to be user-readable (udev rule — see
+# README / project CLAUDE.md); shows "perm?" until that is in place.
+[[widget]]
+id = "cpu_watt"
+entry = "widgets/cpu_watt.luau"
+
+  [[widget.setting]]
+  key = "raplPath"
+  type = "string"
+  label_key = "settings.cpu_watt.rapl_path.label"
+  description_key = "settings.cpu_watt.rapl_path.description"
+  default = "/sys/class/powercap/intel-rapl:0"
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label_key = "settings.cpu_watt.poll.label"
+  default = 2000
+  min = 250
+  max = 60000
+
+  [[widget.setting]]
+  key = "warnThreshold"
+  type = "int"
+  label_key = "settings.cpu_watt.warn.label"
+  default = 140
+  min = 0
+  max = 1000
+
+  [[widget.setting]]
+  key = "critThreshold"
+  type = "int"
+  label_key = "settings.cpu_watt.crit.label"
+  default = 180
+  min = 0
+  max = 1000
+
+# ── Bar widget: GPU power (watts) via nvidia-smi ──────────────────────────────
+# The discrete GPU's power isn't in `sensors -j`; query nvidia-smi's power.draw.
+# Shows "n/a" if nvidia-smi is absent or no NVIDIA GPU is present.
+[[widget]]
+id = "gpu_watt"
+entry = "widgets/gpu_watt.luau"
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label_key = "settings.gpu_watt.poll.label"
+  default = 2000
+  min = 250
+  max = 60000
+
+  [[widget.setting]]
+  key = "warnThreshold"
+  type = "int"
+  label_key = "settings.gpu_watt.warn.label"
+  default = 300
+  min = 0
+  max = 1000
+
+  [[widget.setting]]
+  key = "critThreshold"
+  type = "int"
+  label_key = "settings.gpu_watt.crit.label"
+  default = 400
+  min = 0
+  max = 1000
+
+# ── Bar widget: per-core CPU block sparkline ──────────────────────────────────
+# The in-bar stand-in for v4's per-core chart: one Unicode block glyph per core,
+# exact per-core % in the tooltip. (A real stacked chart in the bar is not
+# expressible via the bar API — see the desktop panel below and the README.)
+[[widget]]
+id = "cpu_cores"
+entry = "widgets/cpu_cores.luau"
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label_key = "settings.cpu_cores.poll.label"
+  description_key = "settings.cpu_cores.poll.description"
+  default = 500
+  min = 250
+  max = 10000
+
+  [[widget.setting]]
+  key = "frameMs"
+  type = "int"
+  label_key = "settings.cpu_cores.frame.label"
+  description_key = "settings.cpu_cores.frame.description"
+  default = 33
+  min = 16
+  max = 1000
+
+  [[widget.setting]]
+  key = "smoothing"
+  type = "double"
+  label_key = "settings.cpu_cores.smoothing.label"
+  description_key = "settings.cpu_cores.smoothing.description"
+  default = 0.35
+  min = 0.05
+  max = 1.0
+
+# ── Desktop widget: per-core bars + CPU/RAM history graph ─────────────────────
+# Closest achievable to v4's per-core stacked chart + RAM overlay, using the
+# desktop ui.* tree (ui.graph is available to desktop widgets, not bar widgets).
+[[desktop_widget]]
+id = "cpu_panel"
+entry = "desktop/cpu_panel.luau"
+
+  [[desktop_widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label_key = "settings.cpu_panel.poll.label"
+  default = 1000
+  min = 250
+  max = 10000
+
+  [[desktop_widget.setting]]
+  key = "historySamples"
+  type = "int"
+  label_key = "settings.cpu_panel.history.label"
+  default = 60
+  min = 10
+  max = 240
