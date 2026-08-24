@@ -105,3 +105,44 @@ clean m=mode:
     rm -rf build-{{m}}
 
 rebuild m=mode: (clean m) (build m)
+
+# ── Luau plugins (plugins/noctalia-sysmon-extras: coolant / watt / cpu_cores / cpu_panel) ──
+# noctalia loads local dev plugins from a path-source dir (config.toml [[plugins.source]]
+# kind=path). We symlink the in-repo plugin there so repo == live with zero copy-drift.
+plugins-src  := justfile_directory() / "plugins/noctalia-sysmon-extras"
+plugins-link := env_var('HOME') / ".local/share/noctalia-dev-plugins/sysmon-extras"
+
+# Ensure the path-source dir is a symlink to the in-repo plugin (idempotent, self-healing).
+link-plugins:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "$(dirname '{{plugins-link}}')"
+    if [[ -L '{{plugins-link}}' && "$(readlink -f '{{plugins-link}}')" == "$(readlink -f '{{plugins-src}}')" ]]; then
+        echo "plugin symlink ok: {{plugins-link}} -> {{plugins-src}}"
+    else
+        rm -rf '{{plugins-link}}'
+        ln -s '{{plugins-src}}' '{{plugins-link}}'
+        echo "linked {{plugins-link}} -> {{plugins-src}}"
+    fi
+
+# Restart the running noctalia shell. Required to load plugin Luau changes:
+# `noctalia msg config-reload` does NOT reload plugin VMs when only plugin files changed.
+restart:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # A stale HYPRLAND_INSTANCE_SIGNATURE (shell older than the compositor) makes the new
+    # instance silently fall back from the hyprland IPC backend to ext-workspace.
+    hypr_dir="/run/user/$(id -u)/hypr"
+    if [[ -d "$hypr_dir" ]]; then
+        export HYPRLAND_INSTANCE_SIGNATURE="$(ls -t "$hypr_dir" | head -1)"
+    fi
+    pkill -x noctalia || true
+    # Graceful shutdown takes >1s; starting too early exits "noctalia is already running".
+    for _ in $(seq 1 40); do pgrep -x noctalia >/dev/null || break; sleep 0.25; done
+    setsid -f nohup noctalia -d >/dev/null 2>&1
+    sleep 1
+    if pgrep -x noctalia >/dev/null; then echo "noctalia restarted (pid $(pgrep -x noctalia))"; else echo "noctalia failed to start" >&2; exit 1; fi
+
+# Make Luau plugin edits take effect: ensure the symlink, then restart the shell.
+# Run this after editing anything under plugins/.
+plugin: link-plugins restart

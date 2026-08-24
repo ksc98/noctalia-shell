@@ -1,0 +1,88 @@
+# noctalia (personal fork)
+
+Personal fork of Noctalia v5 (`noctalia-dev/noctalia-shell`). Two kinds of customization live here:
+
+1. **Native C++ widgets** compiled into the shell (e.g. `sysmon_cores`) — installed via meson.
+2. **Luau plugins** under `plugins/noctalia-sysmon-extras/` (coolant / watt / cpu_cores / cpu_panel) —
+   loaded at runtime, no build step.
+
+Branch `kyle` = our stuff; `main` mirrors upstream. Remotes: `origin` = `ksc98/noctalia-shell` (fork),
+`upstream` = `noctalia-dev` (fetch only). See `FORK-NOTES*` for the native-widget specifics.
+
+## Making changes take effect
+
+### Luau plugin edits (plugins/)
+
+noctalia loads local dev plugins from a **path source**, configured in `~/.config/noctalia/config.toml`:
+
+```toml
+[[plugins.source]]
+name = "kyle-dev"
+kind = "path"
+location = "/home/kchang/.local/share/noctalia-dev-plugins"
+```
+
+That dir's `sysmon-extras` entry is a **symlink to this repo's `plugins/noctalia-sysmon-extras/`**, so the
+repo is the single source of truth (don't replace it with a copy).
+
+**`require` in entry scripts resolves from the plugin ROOT, not the requiring file's dir** — write
+`require("./widgets/sensors_json.luau")`, never `require("./sensors_json.luau")` from inside `widgets/`.
+(Modules loaded via require do resolve file-relative; only entry chunks use the root.)
+
+- **Widget `.luau` edits hot-reload live.** The shell watches every loaded script and its `require`d
+  modules; an in-place write re-runs that widget's VM (log: `[plugin-widget] hot reload: reloaded ...`).
+  The reload resets widget state, so it briefly shows `—` until its next poll.
+- **Everything else needs `just plugin`** (symlink check + full restart): `plugin.toml` manifest changes,
+  translations, added/removed entries (`PluginManager::refresh()` early-returns unless the `[plugins]`
+  config section changed; `noctalia msg config-reload` never reloads plugin VMs), and files **replaced
+  rather than written in place** — git checkout/rebase breaks the inotify watch, so no hot reload fires.
+
+### Native C++ widget edits (src/) — meson build + install + restart
+
+```sh
+just build release && sudo just install release && just restart
+```
+
+(`just install` shadows the AUR `/usr/bin/noctalia` at `/usr/local/bin/noctalia`; needs sudo.)
+
+### Verifying a change is live
+
+The bar is a niri/Wayland surface — screenshot it with grim and read the image:
+
+```sh
+grim -g "1200,0 700x44" /tmp/bar.png   # center region (clock/coolant/watt); adjust to your output
+```
+
+## Code map
+
+- `plugins/noctalia-sysmon-extras/` — the Luau plugin (symlinked into the path-source dir by `just plugin`).
+  - `widgets/sensors_json.luau` — shared async `sensors -j` chip/label/value reader (used by coolant + watt).
+  - `widgets/theme_icon.luau` — themed SVG icon helper: bar font glyphs are fixed at 16px, so cpu/gpu
+    render their own SVG via `setImage` (tinted from colors.json, rewritten to tmpfs on theme change).
+  - `widgets/coolant.luau` — coolant temp, threshold-coloured. Fast path reads the hwmon sysfs attribute
+    directly (~0.4s; a full `sensors -j` scan takes ~6.5s on the slow QUADRO HID), `sensors -j` fallback.
+  - `widgets/cpu_watt.luau` — CPU usage % + package power ("3% · 42W") via `noctalia.readFileAsync` on
+    /proc/stat and the RAPL energy counter (AMD Zen has no power in `sensors -j`); no shell spawns.
+    Needs `energy_uj` user-readable — see `contrib/99-rapl-readable.rules` (udev rule; installed to
+    `/etc/udev/rules.d/`, re-applies on boot). Shows `perm?` if the rule is missing. Chip icon.
+  - `widgets/gpu_watt.luau` — GPU utilization % + power ("33% · 57W") via `nvidia-smi
+    power.draw,utilization.gpu` (the discrete card; not in `sensors -j`). Graphics-card icon (original
+    SVG — no GPU icon exists in the shipped Tabler set, and Font Awesome's is Pro-only).
+  - `widgets/watt.luau` — generic `sensors -j` watt readout (chip/label/value); unused on this box (kept
+    for any `power*_input` sensor, e.g. the amdgpu iGPU PPT).
+  - `widgets/cpu_cores.luau` — per-core load block sparkline.
+  - `desktop/cpu_panel.luau` — desktop per-core bars + CPU/RAM history graph.
+  - `plugin.toml` — manifest: `plugin_api = 23`, widget ids + their config `[[widget.setting]]`
+    schema. Setting labels/descriptions are translation keys (`label_key`/`description_key`) resolved
+    against `translations/en.json`; literal `label`/`description` are rejected by the manifest parser.
+- `src/scripting/` — plugin host (Luau VM, bindings, manager, registry). Path sources are read directly
+  from disk; only git sources get "materialized" under the state dir.
+- `src/system/system_monitor_service.{h,cpp}` — native per-core CPU sampling (`sysmon_cores`).
+- `src/util/file_utils.h` — data/state dir resolution (`~/.local/share/noctalia`, etc.).
+- `justfile` — `configure/build/install` (native, meson) + `link-plugins/restart/plugin` (Luau plugins).
+
+## Runtime config (not in this repo)
+
+- `~/.config/noctalia/config.toml` — widget instances, bar layout, `[[plugins.source]]` entries.
+- Widget instance config (e.g. the coolant sensor chip/label/key) lives in config.toml under
+  `[widget.<name>]`, NOT in the plugin. Current coolant sensor: `quadro-hid-3` / `Sensor 2` / `temp2_input`.
