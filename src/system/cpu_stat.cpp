@@ -46,6 +46,7 @@ namespace noctalia::system::cpu_stat {
 
     Totals totals{};
     totals.idle = idle + iowait;
+    totals.systemBusy = system + irq + softirq;
     totals.total = user + nice + system + idle + iowait + irq + softirq + steal;
     return totals;
   }
@@ -58,6 +59,16 @@ namespace noctalia::system::cpu_stat {
     const std::uint64_t idleDelta = current.idle >= prev.idle ? current.idle - prev.idle : 0;
     const double busy = 1.0 - (static_cast<double>(idleDelta) / static_cast<double>(totalDelta));
     return std::clamp(100.0 * busy, 0.0, 100.0);
+  }
+
+  std::optional<double> systemShareBetween(const Totals& prev, const Totals& current) {
+    if (current.total <= prev.total) {
+      return std::nullopt;
+    }
+    const std::uint64_t totalDelta = current.total - prev.total;
+    const std::uint64_t systemDelta =
+        current.systemBusy >= prev.systemBusy ? current.systemBusy - prev.systemBusy : 0;
+    return std::clamp(100.0 * static_cast<double>(systemDelta) / static_cast<double>(totalDelta), 0.0, 100.0);
   }
 
   std::optional<Totals> readTotals(const std::filesystem::path& statPath) {
