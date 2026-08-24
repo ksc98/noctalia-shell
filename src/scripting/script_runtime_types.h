@@ -115,6 +115,7 @@ namespace scripting {
     std::optional<ScriptTooltipPatch> tooltip;
     std::optional<std::string> fontFamily;
     std::optional<std::string> fontBaseline;
+    std::optional<double> textMinWidth;
     std::optional<ScriptColorPatch> textColor;
     std::optional<ScriptColorPatch> glyphColor;
     std::optional<bool> visible;
@@ -147,6 +148,7 @@ namespace scripting {
           && !tooltip.has_value()
           && !fontFamily.has_value()
           && !fontBaseline.has_value()
+          && !textMinWidth.has_value()
           && !textColor.has_value()
           && !glyphColor.has_value()
           && !visible.has_value()

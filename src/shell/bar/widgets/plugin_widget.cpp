@@ -683,6 +683,10 @@ void PluginWidget::applyScriptPatch(const scripting::ScriptPatch& patch) {
   if (patch.text.has_value()) {
     luaSetText(*patch.text);
   }
+  if (patch.textMinWidth.has_value() && m_label != nullptr) {
+    m_label->setMinWidth(static_cast<float>(*patch.textMinWidth) * m_contentScale);
+    m_dirty = true;
+  }
   if (patch.glyph.has_value()) {
     luaSetGlyph(*patch.glyph);
   }
