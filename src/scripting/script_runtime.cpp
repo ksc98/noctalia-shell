@@ -79,6 +79,9 @@ namespace scripting {
       if (src.fontBaseline.has_value()) {
         dest.fontBaseline = src.fontBaseline;
       }
+      if (src.textMinWidth.has_value()) {
+        dest.textMinWidth = src.textMinWidth;
+      }
       if (src.textColor.has_value()) {
         dest.textColor = src.textColor;
       }
