@@ -29,6 +29,9 @@ struct SystemStats {
   // reference; sampled on its own fixed 1s cadence. Offline cores are absent from /proc/stat,
   // so the length can change and an entry's position is not its core id.
   std::vector<double> cpuCoreUsagePercent;
+  // System/irq/softirq share of each core, parallel to cpuCoreUsagePercent and never exceeding it,
+  // so a consumer can stack it under the busy bar. Populated on the same ticks.
+  std::vector<double> cpuCoreSystemPercent;
   double ramUsagePercent{0.0};
   std::uint64_t ramUsedMb{0};
   std::uint64_t ramTotalMb{0};
