@@ -4884,6 +4884,7 @@
         "settings": "Settings",
         "spacer": "Spacer",
         "sysmon": "System Monitor",
+        "sysmon-cores": "CPU Cores",
         "taskbar": "Taskbar",
         "test": "Test",
         "text": "Text",
