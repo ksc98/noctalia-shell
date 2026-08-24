@@ -44,6 +44,14 @@ namespace {
     return 0;
   }
 
+  int luau_setTextMinWidth(lua_State* L) {
+    const double minWidth = luaL_checknumber(L, 1);
+    if (auto* context = getContext(L)) {
+      context->patch.textMinWidth = minWidth >= 0.0 ? minWidth : 0.0;
+    }
+    return 0;
+  }
+
   int luau_setGlyph(lua_State* L) {
     size_t len = 0;
     const char* name = luaL_checklstring(L, 1, &len);
@@ -235,6 +243,7 @@ namespace {
 
   const luaL_Reg kWidgetLib[] = {
       {"setText", luau_setText},
+      {"setTextMinWidth", luau_setTextMinWidth},
       {"setGlyph", luau_setGlyph},
       {"setImage", luau_setImage},
       {"setTooltip", luau_setTooltip},
