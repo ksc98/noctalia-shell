@@ -1361,7 +1361,9 @@ void SystemMonitorService::samplingLoop() {
         // and emit nothing this tick rather than indexing across mismatched vectors.
         if (prevCpuCores.has_value() && prevCpuCores->size() == currentCores->size()) {
           std::vector<double> usage;
+          std::vector<double> systemShare;
           usage.reserve(currentCores->size());
+          systemShare.reserve(currentCores->size());
           for (std::size_t i = 0; i < currentCores->size(); ++i) {
             const auto core = cpu_stat::usageBetween((*prevCpuCores)[i], (*currentCores)[i]);
             if (!core.has_value()) {
@@ -1371,10 +1373,14 @@ void SystemMonitorService::samplingLoop() {
               break;
             }
             usage.push_back(*core);
+            systemShare.push_back(
+                std::min(cpu_stat::systemShareBetween((*prevCpuCores)[i], (*currentCores)[i]).value_or(0.0), *core)
+            );
           }
           if (!usage.empty()) {
             std::scoped_lock lock{m_statsMutex};
             m_latest.cpuCoreUsagePercent = std::move(usage);
+            m_latest.cpuCoreSystemPercent = std::move(systemShare);
           }
         }
         prevCpuCores = std::move(currentCores);
@@ -1541,6 +1547,7 @@ void SystemMonitorService::samplingLoop() {
       // otherwise see a series populated only while someone holds a per-core reference. clear()
       // keeps the slot's capacity, so the ring does not churn allocations.
       m_history[writeIndex].cpuCoreUsagePercent.clear();
+      m_history[writeIndex].cpuCoreSystemPercent.clear();
       for (auto& [path, disk] : m_diskHistories) {
         if (disk.refs <= 0) {
           continue;

@@ -53,6 +53,7 @@
 #include "shell/bar/widgets/settings_widget_definition.h"
 #include "shell/bar/widgets/spacer_widget.h"
 #include "shell/bar/widgets/spacer_widget_definition.h"
+#include "shell/bar/widgets/sysmon_cores_widget.h"
 #include "shell/bar/widgets/sysmon_widget.h"
 #include "shell/bar/widgets/sysmon_widget_definition.h"
 #include "shell/bar/widgets/taskbar_widget.h"
@@ -307,6 +308,31 @@ std::unique_ptr<Widget> WidgetFactory::create(
                     context.config, context.settingContext,
                     SysmonWidgetDefinitionContext{.verticalBar = context.verticalBar}
                 )
+            );
+          }},
+      {"sysmon_cores", [](const WidgetFactory& f, const BuiltinWidgetContext& context) {
+            const WidgetConfig* wc = context.config;
+            const int barWidth = static_cast<int>(wc != nullptr ? wc->getInt("bar_width", 3) : 3);
+            const int gap = static_cast<int>(wc != nullptr ? wc->getInt("gap", 1) : 1);
+            const int vPadding = static_cast<int>(wc != nullptr ? wc->getInt("v_padding", 6) : 6);
+            const bool showBorder = wc != nullptr ? wc->getBool("show_border", true) : true;
+            const bool showSystem = wc != nullptr ? wc->getBool("show_system", true) : true;
+            const bool smoothing = wc != nullptr ? wc->getBool("smoothing", true) : true;
+            const ColorSpec systemColor = wc != nullptr
+                ? wc->getColorSpec(
+                      "system_color", colorSpecFromRole(ColorRole::Error),
+                      "widget." + context.name + ".system_color"
+                  )
+                : colorSpecFromRole(ColorRole::Error);
+            const ColorSpec borderColor = wc != nullptr
+                ? wc->getColorSpec(
+                      "border_color", colorSpecFromRole(ColorRole::Outline),
+                      "widget." + context.name + ".border_color"
+                  )
+                : colorSpecFromRole(ColorRole::Outline);
+            return createWidget<SysmonCoresWidget>(
+                context.contentScale, f.m_sysmon, barWidth, gap, vPadding, systemColor, borderColor, showBorder,
+                showSystem, smoothing
             );
           }},
       {"taskbar", [](const WidgetFactory& f, const BuiltinWidgetContext& context) {

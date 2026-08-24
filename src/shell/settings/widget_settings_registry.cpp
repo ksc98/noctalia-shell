@@ -249,6 +249,7 @@ namespace settings {
         {.type = "settings", .labelKey = "settings.widgets.types.settings", .glyph = "settings"},
         {.type = "spacer", .labelKey = "settings.widgets.types.spacer", .glyph = "arrows-horizontal"},
         {.type = "sysmon", .labelKey = "settings.widgets.types.sysmon", .glyph = "cpu-usage"},
+        {.type = "sysmon_cores", .labelKey = "settings.widgets.types.sysmon-cores", .glyph = "cpu-usage"},
         {.type = "taskbar", .labelKey = "settings.widgets.types.taskbar", .glyph = "apps"},
         {.type = "test", .labelKey = "settings.widgets.types.test", .glyph = "flask", .visibleInPicker = false},
         {.type = "text", .labelKey = "settings.widgets.types.text", .glyph = "letter-t"},
@@ -746,6 +747,15 @@ namespace settings {
 
       if (projection != nullptr) {
         specs = projection->presentedSettingSpecs();
+      } else if (type == "sysmon_cores") {
+        specs.push_back(intSpec("bar_width", 3, 1.0, 40.0, 1.0));
+        specs.push_back(intSpec("gap", 1, 0.0, 20.0, 1.0));
+        specs.push_back(intSpec("v_padding", 6, 0.0, 20.0, 1.0));
+        specs.push_back(boolSpec("show_border", true));
+        specs.push_back(boolSpec("show_system", true));
+        specs.push_back(boolSpec("smoothing", true));
+        specs.push_back(colorSpec("system_color", "error"));
+        specs.push_back(colorSpec("border_color", "outline"));
       }
 
       specs.insert(
