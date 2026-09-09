@@ -153,7 +153,8 @@ restart:
     pkill -x noctalia || true
     # Graceful shutdown takes >1s; starting too early exits "noctalia is already running".
     for _ in $(seq 1 40); do pgrep -x noctalia >/dev/null || break; sleep 0.25; done
-    setsid -f nohup noctalia -d >/dev/null 2>&1
+    # Foreground + journal (-d dup2s /dev/null over stdio); mirrors the hyprland.lua spawn.
+    setsid -f sh -c 'exec noctalia 2>&1 | systemd-cat -t noctalia' >/dev/null 2>&1
     sleep 1
     if pgrep -x noctalia >/dev/null; then echo "noctalia restarted (pid $(pgrep -x noctalia))"; else echo "noctalia failed to start" >&2; exit 1; fi
 
