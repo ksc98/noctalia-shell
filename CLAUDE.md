@@ -1,6 +1,6 @@
 # noctalia (personal fork)
 
-Personal fork of Noctalia v5 (`noctalia-dev/noctalia-shell`). Two kinds of customization live here:
+Personal fork of Noctalia v5 (`noctalia-dev/noctalia`). Two kinds of customization live here:
 
 1. **Native C++ widgets** compiled into the shell (e.g. `sysmon_cores`) — installed via meson.
 2. **Luau plugins** under `plugins/noctalia-sysmon-extras/` (coolant / watt / cpu_cores / cpu_panel) —
@@ -52,6 +52,14 @@ The bar is a niri/Wayland surface — screenshot it with grim and read the image
 ```sh
 grim -g "1200,0 700x44" /tmp/bar.png   # center region (clock/coolant/watt); adjust to your output
 ```
+
+## Upstream PRs
+
+Cut PR branches from `upstream/main` in a worktree (never from `kyle`) and run what CI runs before every
+push: `clang-format --dry-run -Werror` on the changed files, `just build`, `just test debug --print-errorlogs`
+and `just lint`. `just lint` is clang-tidy with `-warnings-as-errors=*` over all of `src/`, and CI's Build
+job fails on any diagnostic (e.g. `modernize-use-ranges`), so build + test + format passing is not enough.
+Keep the `.github/PULL_REQUEST_TEMPLATE.md` headings and checklist; a bot re-drafts PRs missing them.
 
 ## Code map
 
