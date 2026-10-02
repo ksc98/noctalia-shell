@@ -40,7 +40,7 @@ repo is the single source of truth (don't replace it with a copy).
 ### Native C++ widget edits (src/) — meson build + install + restart
 
 ```sh
-just build release && sudo just install release && just restart
+just build release && sudo "$(mise which just)" install release && just restart
 ```
 
 (`just install` shadows the AUR `/usr/bin/noctalia` at `/usr/local/bin/noctalia`; needs sudo.)
