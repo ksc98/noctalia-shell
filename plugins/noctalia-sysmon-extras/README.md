@@ -8,9 +8,10 @@ what v5 lacks:
 | Widget | Surface | What it does |
 |---|---|---|
 | `coolant` | bar | Coolant temp from `sensors -j`, keyed by chip/label/value (v4 parity), threshold-coloured |
-| `cpu_watt` | bar | CPU package power (W) from the RAPL energy counter — for AMD Zen, which has no power channel in `sensors -j`. Needs a udev rule (below) |
-| `gpu_watt` | bar | GPU power (W) from `nvidia-smi --query-gpu=power.draw` |
+| `cpu_watt` | bar | CPU usage % (`/proc/stat`) + package power (W) from the RAPL energy counter — for AMD Zen, which has no power channel in `sensors -j`. Needs a udev rule (below). Icon: a CPU package whose 3x3 cell grid lights up as a usage meter |
+| `gpu_watt` | bar | GPU utilization % + power (W) from `nvidia-smi --query-gpu=power.draw,utilization.gpu`. Icon: a graphics card whose fan is a ring gauge sweeping with utilization |
 | `watt` | bar | Generic power (W) from `sensors -j`, keyed by chip/label/value. Use for any sensor that exposes `power*_input` (e.g. an amdgpu iGPU's PPT) |
+| `ram` | bar | RAM use as a memory-stick icon whose chips fill as a level meter + `NN%`, from `noctalia.systemStats()`; the native sysmon only offers a linear gauge |
 | `cpu_cores` | bar | Per-core load as a Unicode block sparkline (`▁▂▃▄▅▆▇█`), exact %s in the tooltip |
 | `cpu_panel` | desktop | Per-core bars + a CPU/RAM history graph (the RAM overlay) |
 
@@ -27,16 +28,16 @@ This machine's config (`~/.config/noctalia/config.toml`):
 [widget.coolant]
 type = "kyle/sysmon-extras:coolant"
 coolantSensorChip = "quadro-hid-3"   # prefix-matched against the `sensors -j` chip key
-coolantSensorLabel = "Sensor 2"
-coolantSensorValueKey = "temp2_input"
+coolantSensorLabel = "Sensor 3"
+coolantSensorValueKey = "temp3_input"
 
 [widget.cpu_watt]
 type = "kyle/sysmon-extras:cpu_watt"
-glyph = "cpu"
+pollIntervalMs = 1000
 
 [widget.gpu_watt]
 type = "kyle/sysmon-extras:gpu_watt"
-glyph = "bolt"
+pollIntervalMs = 1000
 ```
 
 ### cpu_watt: RAPL must be user-readable
@@ -61,31 +62,18 @@ Intel-only.)
 - **Per-core CPU** — present as a compact in-bar sparkline + exact tooltip, plus a richer
   desktop panel (bars + history graph). Sampled from `/proc/stat` via `noctalia.readFile`.
 
-## What did NOT port (the gap to revisit after v5 is live)
+## Gaps vs v4
 
-1. **The per-core stacked bar chart *inside the bar*.** v5's bar-widget API is text/glyph/
-   colour/tooltip only — there is no drawing surface. Mitigations shipped: the block sparkline
-   in the bar, and the `cpu_panel` desktop widget for the real visual. A true in-bar chart would
-   need either a native C++ bar widget or an upstream change exposing `ui.graph` to bar widgets.
-2. **The exact user-vs-system stacked overlay per core.** The bar sparkline encodes total load
-   per core only; the desktop bars show total load (system-time tinting was not reproduced —
-   `/proc/stat` split is available, but the progress control is single-fill). Candidate for the
-   desktop panel in the next pass.
-3. **RAM history line *overlaid on the per-core bars*** as drawn in v4 — here it's a separate
-   `ui.graph` series (`values2`) in the desktop panel, not overlaid on the core bars.
-4. **Everything is unrun.** No v5 runtime existed to execute against, so none of this is
-   behaviourally verified (see below).
-
-## Not yet verified (do these on the live pass)
-
-- `noctalia.readFile` reads absolute `/proc/*` paths (assumed; the binding is a general file
-  reader). If it's sandboxed to the plugin dir, swap to `noctalia.runAsync("cat /proc/stat")`.
-- `ui.graph` value domain — series are normalised to `0..1` here; confirm the graph expects
-  fractions (not 0..100) and that `values2`/`color2` render as a second line.
-- `barWidget.setColor` role tokens (`error`/`tertiary`/`on_surface`) recolour as expected.
-- `setText` inside a `runAsync` callback flushes; if not, the cache-and-paint pattern already
-  used means the value still lands on the next `update()` tick.
-- Glyph names (`water_drop`, `bolt`) exist in v5's glyph set; substitute if not.
+1. **The per-core stacked chart in the bar** is the fork's native C++ `sysmon_cores` widget
+   (user/system stacked per core, optional coolant-temp line over a sliding window; see
+   `FORK-NOTES.md`), not this plugin. The plugin's `cpu_cores` block sparkline is the fallback for
+   unpatched builds. Plugin bar widgets can draw shapes via `barWidget.render` (`ram`,
+   `cpu_watt` and `gpu_watt` use it), but the per-frame bar easing stays native.
+2. **RAM history line overlaid on the per-core bars** (as in v4) is not reproduced: RAM history
+   is a separate `ui.graph` series (`values2`) in the `cpu_panel` desktop widget, and the native
+   chart's overlay line is a temperature instead.
+3. **`cpu_panel` is not configured on this box**, so its desktop `ui.graph` rendering (0..1
+   series, `values2`/`color2` as a second line) is not exercised by the live setup.
 
 ## Source notes
 

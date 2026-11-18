@@ -4,6 +4,7 @@
   "widget.watt": "CPU power",
   "widget.cpu_watt": "CPU usage + power",
   "widget.gpu_watt": "GPU usage + power",
+  "widget.ram": "RAM usage",
   "widget.cpu_cores": "Per-core CPU",
   "widget.cpu_panel": "CPU panel",
   "settings": {
@@ -80,6 +81,17 @@
       },
       "crit": {
         "label": "Critical threshold (W)"
+      }
+    },
+    "ram": {
+      "poll": {
+        "label": "Poll interval (ms)"
+      },
+      "warn": {
+        "label": "Warn threshold (%)"
+      },
+      "crit": {
+        "label": "Critical threshold (%)"
       }
     },
     "cpu_cores": {

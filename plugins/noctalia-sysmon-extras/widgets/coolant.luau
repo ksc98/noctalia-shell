@@ -2,10 +2,9 @@
 -- Ports the v4 SystemMonitor coolant readout, keyed by <chip>/<label>/<valueKey>.
 --
 -- Fast path: the configured chip usually maps to a hwmon device, and reading the
--- single sysfs attribute (<hwmon>/<valueKey>, millidegrees) takes ~0.4s on the
--- QUADRO. Fallback: the generic `sensors -j` reader (sensors_json.luau) — a full
--- lm-sensors scan takes ~6.5s on this box because the QUADRO answers each HID
--- sensor report slowly, which is why the fast path exists.
+-- single sysfs attribute (<hwmon>/<valueKey>, millidegrees) takes ~1ms. Fallback:
+-- the generic `sensors -j` reader (sensors_json.luau), which scans every chip
+-- (~150ms on this box) and spawns a process per poll.
 --
 -- Values paint straight from the callback (widget patches flush after every script
 -- call), so the readout appears as soon as the first read lands instead of waiting

@@ -1,14 +1,15 @@
 id = "kyle/sysmon-extras"
 name = "SystemMonitor Extras"
 version = "0.1.0"
-plugin_api = 23
+plugin_api = 55
 author = "kyle"
 license = "MIT"
 description = """
 Fills the gaps between v5's native sysmon and the v4 SystemMonitor fork: a coolant-temp
 readout, a CPU power (watts) readout, a per-core CPU block-sparkline, and a desktop panel
 with per-core bars + a CPU/RAM history graph. Sensor stats already covered by v5's native
-sysmon (CPU%, CPU temp, GPU, RAM, swap, net, disk) are intentionally NOT duplicated here.
+sysmon (CPU%, CPU temp, GPU, RAM, swap, net, disk) are intentionally NOT duplicated here,
+except RAM as a memory-stick level meter (the native sysmon only draws a linear bar).
 """
 
 # Setting labels/descriptions live in translations/en.json under settings.<widget>.<key>.
@@ -192,6 +193,36 @@ entry = "widgets/gpu_watt.luau"
   default = 400
   min = 0
   max = 1000
+
+# ── Bar widget: RAM usage ─────────────────────────────────────────────────────
+# Memory-stick icon whose chips fill as a level meter (native ui.* boxes), then "NN%".
+[[widget]]
+id = "ram"
+entry = "widgets/ram.luau"
+
+  [[widget.setting]]
+  key = "pollIntervalMs"
+  type = "int"
+  label_key = "settings.ram.poll.label"
+  default = 1000
+  min = 250
+  max = 60000
+
+  [[widget.setting]]
+  key = "warnThreshold"
+  type = "int"
+  label_key = "settings.ram.warn.label"
+  default = 80
+  min = 0
+  max = 100
+
+  [[widget.setting]]
+  key = "critThreshold"
+  type = "int"
+  label_key = "settings.ram.crit.label"
+  default = 90
+  min = 0
+  max = 100
 
 # ── Bar widget: per-core CPU block sparkline ──────────────────────────────────
 # The in-bar stand-in for v4's per-core chart: one Unicode block glyph per core,

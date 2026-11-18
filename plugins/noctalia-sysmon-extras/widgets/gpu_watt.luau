@@ -4,76 +4,118 @@
 -- hwmon power channel), so query nvidia-smi directly. `power.draw` is instantaneous
 -- board power in watts. For a multi-GPU box, the first reported GPU is used.
 --
--- The icon is an original graphics-card SVG (the shipped Tabler set has no GPU icon):
--- PCIe bracket, card body with gold fingers, two fans punched out via evenodd with
--- hubs filled back in. Theme-tinted via theme_icon.luau.
-
-local themeIcon = require("./widgets/theme_icon.luau")
+-- The icon is a graphics card drawn natively from ui.* nodes via barWidget.render (no
+-- SVG; theme roles throughout), in the RAM DIMM's visual language: outlined board with a
+-- flush PCIe bracket and gold fingers, and one fan that is a ui.ring gauge whose
+-- `tertiary` arc sweeps clockwise with GPU utilization.
+-- The "NN% · NNW" label follows the power warn/crit thresholds.
 
 local interval = noctalia.getConfig("pollIntervalMs") or 2000
 local warn = noctalia.getConfig("warnThreshold") or 300
 local crit = noctalia.getConfig("critThreshold") or 400
 
 noctalia.setUpdateInterval(interval)
-barWidget.setTextMinWidth(68) -- fits "99% · 450W"; keeps the centered bar from shifting
 
-local refreshIcon = themeIcon.make({
-  file = "noctalia-sysmon-gpu.svg",
-  colorKey = "mTertiary",
-  fallback = "#9ece6a",
-  viewW = 24,
-  viewH = 20,
-  width = 22,
-  height = 18,
-  pathData = table.concat({
-    "M1,2 H3 V18 H1 Z", -- PCIe bracket
-    "M4,5 H23 V15 H4 Z", -- card body
-    "M6,15 H11 V17 H6 Z", -- gold fingers
-    "M13,15 H19 V17 H13 Z",
-    "M6.3,10 a3.2,3.2 0 1 0 6.4,0 a3.2,3.2 0 1 0 -6.4,0 Z", -- fan cutouts
-    "M14.3,10 a3.2,3.2 0 1 0 6.4,0 a3.2,3.2 0 1 0 -6.4,0 Z",
-    "M8.4,10 a1.1,1.1 0 1 0 2.2,0 a1.1,1.1 0 1 0 -2.2,0 Z", -- fan hubs
-    "M16.4,10 a1.1,1.1 0 1 0 2.2,0 a1.1,1.1 0 1 0 -2.2,0 Z",
-  }, " "),
-})
+-- Geometry in logical px, matching ram.luau's DIMM: same 12px board height, 1px outline,
+-- radius 2, and the same split pin strip under it (here the PCIe gold fingers).
+local FAN, FAN_RING = 9, 2
+local BORDER, PAD = 1, 0.5
+local BODY_W, BODY_H = 19, FAN + 2 * (BORDER + PAD)
+local FINGER_H, FINGER_GAP = 2, 0.5
+local BRACKET_W = 1.6
+local BRACKET_H = BODY_H + FINGER_GAP + FINGER_H + 1.5 -- runs past the fingers, like a real bracket
 
-local lastText = "—"
-local lastValue = nil
+local FILL = "tertiary"
+local OUTLINE = "on_surface/0.55"
+local UNLIT = "on_surface/0.14"
+
+local lastUtil = nil -- % (number)
+local lastWatt = nil -- W (number)
+local status = "—" -- shown while there's no reading: "—" before the first poll, "n/a" without nvidia-smi
 
 local cmd = "nvidia-smi --query-gpu=power.draw,utilization.gpu --format=csv,noheader,nounits 2>/dev/null"
+
+local function card(level)
+  return ui.row({ key = "card", gap = 0, align = "start" }, {
+    -- PCIe bracket, flush against the board's left edge.
+    ui.box({ key = "bracket", width = BRACKET_W, height = BRACKET_H, radius = 0.5, fill = OUTLINE }),
+    ui.column({ key = "pcb", gap = FINGER_GAP, align = "start" }, {
+      ui.row({
+        key = "body",
+        width = BODY_W,
+        height = BODY_H,
+        padding = PAD,
+        align = "center",
+        justify = "center",
+        radius = 2,
+        border = OUTLINE,
+        borderWidth = BORDER,
+      }, {
+        -- The fan is the meter: its arc sweeps clockwise with utilization.
+        ui.ring({
+          key = "fan",
+          width = FAN,
+          height = FAN,
+          progress = level,
+          thickness = FAN_RING,
+          fill = FILL,
+          track = UNLIT,
+        }),
+      }),
+      -- Gold fingers: two strips split by the key notch, styled like the DIMM's pins.
+      ui.row({ key = "fingers", paddingH = 2, gap = 1.5 }, {
+        ui.box({ key = "fingerL", width = 4.5, height = FINGER_H, radius = 0.5, fill = OUTLINE }),
+        ui.box({ key = "fingerR", width = 9, height = FINGER_H, radius = 0.5, fill = OUTLINE }),
+      }),
+    }),
+  })
+end
+
+local function paint()
+  local level, text, color, tooltip = 0, status, "on_surface", nil
+  if lastWatt then
+    local watt = string.format("%dW", math.floor(lastWatt + 0.5))
+    text = lastUtil and string.format("%d%% · %s", math.floor(lastUtil + 0.5), watt) or watt
+    level = lastUtil and math.clamp(lastUtil / 100, 0, 1) or 0
+    if lastWatt >= crit then
+      color = "error"
+    elseif lastWatt >= warn then
+      color = "tertiary"
+    end
+    tooltip = string.format("GPU %s%.1f W", lastUtil and string.format("%d%% · ", math.floor(lastUtil + 0.5)) or "", lastWatt)
+  end
+
+  local container = barWidget.isVertical() and ui.column or ui.row
+  barWidget.render(container({ gap = 5, align = "center", tooltip = tooltip }, {
+    card(level),
+    -- ui.label ignores `width` (it hugs its text), so a minWidth row reserves room for
+    -- "99% · 450W" and keeps the centered bar from shifting as the value changes.
+    ui.row({ key = "txtBox", minWidth = 68, align = "center" }, {
+      ui.label({ key = "txt", text = text, color = color }),
+    }),
+  }))
+end
 
 local function refresh()
   noctalia.runAsync(cmd, function(res)
     if res.exitCode ~= 0 or res.stdout == "" then
-      lastText = "n/a"
-      lastValue = nil
+      status = "n/a"
+      lastWatt = nil
+      lastUtil = nil
       return
     end
     local w, util = res.stdout:match("([%d%.]+),%s*([%d%.]+)")
     w = tonumber(w)
     if not w then return end
-    lastValue = w
-    local watt = string.format("%dW", math.floor(w + 0.5))
-    util = tonumber(util)
-    lastText = util and string.format("%d%% · %s", math.floor(util + 0.5), watt) or watt
-    barWidget.setText(lastText)
+    lastWatt = w
+    lastUtil = tonumber(util)
   end)
 end
 
 function update()
-  refreshIcon()
-  barWidget.setText(lastText)
-  if lastValue then
-    if lastValue >= crit then
-      barWidget.setColor("error")
-    elseif lastValue >= warn then
-      barWidget.setColor("tertiary")
-    else
-      barWidget.setColor("on_surface")
-    end
-  end
+  paint()
   refresh()
 end
 
-refreshIcon()
+paint()
 refresh()

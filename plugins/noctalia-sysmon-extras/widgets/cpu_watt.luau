@@ -12,8 +12,11 @@
 --
 -- All reads go through noctalia.readFileAsync (plugin_api 23) — no shell spawns.
 -- energy_uj chains into /proc/uptime so each ΔµJ pairs with its own Δs.
-
-local themeIcon = require("./widgets/theme_icon.luau")
+--
+-- The icon is a CPU package drawn natively from ui.* nodes via barWidget.render (no SVG;
+-- theme roles throughout), in the RAM DIMM's visual language: an outlined package with
+-- stubby side pins around a 3x3 grid of cells that light in `secondary` as a usage meter.
+-- The "NN% · NNW" label follows the power warn/crit thresholds.
 
 local interval = noctalia.getConfig("pollIntervalMs") or 2000
 local warn = noctalia.getConfig("warnThreshold") or 140
@@ -21,39 +24,24 @@ local crit = noctalia.getConfig("critThreshold") or 180
 local rapl = noctalia.getConfig("raplPath") or "/sys/class/powercap/intel-rapl:0"
 
 noctalia.setUpdateInterval(interval)
-barWidget.setTextMinWidth(64) -- fits "99% · 99W"; keeps the centered bar from shifting
 
--- Original CPU-chip SVG (die + pins), drawn larger than the 16px font glyphs allow.
-local refreshIcon = themeIcon.make({
-  file = "noctalia-sysmon-cpu.svg",
-  colorKey = "mSecondary",
-  fallback = "#bb9af7",
-  viewW = 20,
-  viewH = 20,
-  width = 18,
-  height = 18,
-  pathData = table.concat({
-    "M3.5,3.5 H16.5 V16.5 H3.5 Z", -- package
-    "M6.8,6.8 H13.2 V13.2 H6.8 Z", -- die outline (punched)
-    "M8.6,8.6 H11.4 V11.4 H8.6 Z", -- die center (filled back)
-    "M5.2,1 H6.8 V3.5 H5.2 Z", -- pins: top
-    "M9.2,1 H10.8 V3.5 H9.2 Z",
-    "M13.2,1 H14.8 V3.5 H13.2 Z",
-    "M5.2,16.5 H6.8 V19 H5.2 Z", -- bottom
-    "M9.2,16.5 H10.8 V19 H9.2 Z",
-    "M13.2,16.5 H14.8 V19 H13.2 Z",
-    "M1,5.2 H3.5 V6.8 H1 Z", -- left
-    "M1,9.2 H3.5 V10.8 H1 Z",
-    "M1,13.2 H3.5 V14.8 H1 Z",
-    "M16.5,5.2 H19 V6.8 H16.5 Z", -- right
-    "M16.5,9.2 H19 V10.8 H16.5 Z",
-    "M16.5,13.2 H19 V14.8 H16.5 Z",
-  }, " "),
-})
+-- Geometry in logical px, matching ram.luau's DIMM (1px outline, radius 2, 1.5 padding).
+-- The die is a 3x3 grid of cells that light like the DIMM's chips: bottom row first,
+-- left to right, the current cell filling bottom-up, so each cell is ~11% and even a
+-- few % of load shows as a sliver in the first cell.
+local GRID, CELL, CELL_GAP = 3, 3, 1
+local PAD, BORDER = 1.5, 1
+local INNER = GRID * CELL + (GRID - 1) * CELL_GAP
+local PKG = INNER + 2 * (PAD + BORDER)
+local PIN_LEN, PIN_W = 2, 2 -- stubby DIP-style pins on the left/right edges, one per cell row
+
+local FILL = "secondary"
+local OUTLINE = "on_surface/0.55"
+local UNLIT = "on_surface/0.14"
 
 local lastWatt = "—"
-local lastPct = nil -- "3%" once /proc/stat has two samples
-local lastValue = nil
+local lastPct = nil -- usage % (number) once /proc/stat has two samples
+local lastValue = nil -- W (number)
 local range = nil -- max_energy_range_uj (constant; read once, retried until it lands)
 local prevE = nil -- µJ
 local prevU = nil -- s (uptime)
@@ -79,8 +67,7 @@ local function refreshStat()
     local busy = f[1] + f[2] + f[3] + f[6] + f[7] + f[8]
     local total = busy + f[4] + f[5]
     if prevBusy and total > prevTotal then
-      local pct = (busy - prevBusy) / (total - prevTotal) * 100
-      lastPct = string.format("%d%%", math.floor(pct + 0.5))
+      lastPct = (busy - prevBusy) / (total - prevTotal) * 100
     end
     prevBusy = busy; prevTotal = total
   end)
@@ -114,22 +101,93 @@ local function refreshWatt()
   end)
 end
 
-function update()
-  refreshIcon()
-  barWidget.setText(lastPct and (lastPct .. " · " .. lastWatt) or lastWatt)
+local function cell(i, level)
+  local f = math.clamp(level * GRID * GRID - (i - 1), 0, 1)
+  local h = math.floor(f * CELL * 10 + 0.5) / 10
+  return ui.column({
+    key = "cell" .. i,
+    width = CELL,
+    height = CELL,
+    radius = 0.6,
+    fill = UNLIT,
+    justify = "end",
+    clip = true,
+  }, {
+    ui.box({ key = "lvl", width = CELL, height = h, radius = 0.6, fill = FILL, visible = h > 0 }),
+  })
+end
+
+local function pins(key)
+  local boxes = {}
+  for r = 1, GRID do
+    boxes[r] = ui.box({ key = key .. r, width = PIN_LEN, height = PIN_W, fill = OUTLINE })
+  end
+  return ui.column({ key = key, gap = CELL + CELL_GAP - PIN_W }, boxes)
+end
+
+local function chip(level)
+  local rows = {}
+  for r = GRID, 1, -1 do -- top row first in layout; row 1 (bottom) lights first
+    local cells = {}
+    for c = 1, GRID do
+      cells[c] = cell((r - 1) * GRID + c, level)
+    end
+    rows[#rows + 1] = ui.row({ key = "row" .. r, gap = CELL_GAP }, cells)
+  end
+  return ui.row({ key = "chip", gap = 0, align = "center" }, {
+    pins("pinL"),
+    ui.column({
+      key = "pkg",
+      width = PKG,
+      height = PKG,
+      padding = PAD,
+      gap = CELL_GAP,
+      align = "center",
+      justify = "center",
+      radius = 2,
+      border = OUTLINE,
+      borderWidth = BORDER,
+    }, rows),
+    pins("pinR"),
+  })
+end
+
+local function paint()
+  local text = lastPct and string.format("%d%% · %s", math.floor(lastPct + 0.5), lastWatt) or lastWatt
+  local level = lastPct and math.clamp(lastPct / 100, 0, 1) or 0
+
+  local color = "on_surface"
   if lastValue then
     if lastValue >= crit then
-      barWidget.setColor("error")
+      color = "error"
     elseif lastValue >= warn then
-      barWidget.setColor("tertiary")
-    else
-      barWidget.setColor("on_surface")
+      color = "tertiary"
     end
   end
+  local tooltip = nil
+  if lastPct or lastValue then
+    tooltip = string.format("CPU %s%s",
+      lastPct and string.format("%.1f%%", lastPct) or "",
+      lastValue and string.format("%s%.1f W package", lastPct and " · " or "", lastValue) or "")
+  end
+
+  local container = barWidget.isVertical() and ui.column or ui.row
+  barWidget.render(container({ gap = 5, align = "center", tooltip = tooltip }, {
+    chip(level),
+    -- ui.label ignores `width` (it hugs its text), so a minWidth row reserves room for
+    -- "99% · 99W" and keeps the centered bar from shifting as the value changes.
+    ui.row({ key = "txtBox", minWidth = 64, align = "center" }, {
+      ui.label({ key = "txt", text = text, color = color }),
+    }),
+  }))
+end
+
+function update()
+  paint()
   refreshStat()
   refreshWatt()
 end
 
-refreshIcon()
+paint()
 refreshStat()
 refreshWatt()
