@@ -36,6 +36,8 @@ public:
   void setSeriesColor(std::size_t index, const ColorSpec& color);
 
   void setLineWidth(float width);
+  // Antialiasing half-band in px (default 0.5); smaller keeps hairlines from smearing over two rows.
+  void setAaSize(float size);
   void setFillOpacity(float opacity);
 
   // Inter-sample scroll progress [0..1] applied to every active series; call
@@ -60,6 +62,7 @@ private:
       colorSpecFromRole(ColorRole::Tertiary),
   };
   float m_lineWidth = 1.5F;
+  float m_aaSize = 0.5F;
   float m_fillOpacity = 0.2F;
   bool m_dataDirty = false;
   Signal<>::ScopedConnection m_paletteConn;

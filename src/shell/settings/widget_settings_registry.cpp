@@ -781,6 +781,14 @@ namespace settings {
         specs.push_back(boolSpec("smoothing", true));
         specs.push_back(colorSpec("system_color", "error"));
         specs.push_back(colorSpec("border_color", "outline_variant"));
+        specs.push_back(baseSpec("temp_line_sensor", WidgetControlKind::String, std::string{}, false));
+        specs.push_back(baseSpec("temp_line_label", WidgetControlKind::String, std::string("Temp"), false));
+        specs.push_back(intSpec("temp_line_window", 3600, 60.0, 86400.0, 60.0));
+        specs.push_back(intSpec("temp_line_interval", 15, 1.0, 3600.0, 1.0));
+        specs.push_back(doubleSpec("temp_line_min", 20.0, -40.0, 150.0, 1.0));
+        specs.push_back(doubleSpec("temp_line_max", 45.0, -40.0, 150.0, 1.0));
+        specs.push_back(doubleSpec("temp_line_width", 0.3, 0.1, 4.0, 0.1));
+        specs.push_back(colorSpec("temp_line_color", "primary"));
       }
 
       specs.insert(

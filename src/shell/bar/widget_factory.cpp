@@ -326,9 +326,23 @@ std::unique_ptr<Widget> WidgetFactory::create(
                       "widget." + context.name + ".border_color"
                   )
                 : colorSpecFromRole(ColorRole::OutlineVariant);
+            SysmonCoresWidget::TempLine tempLine;
+            tempLine.color = colorSpecFromRole(ColorRole::Primary);
+            if (wc != nullptr) {
+              tempLine.sensor = wc->getString("temp_line_sensor", "");
+              tempLine.label = wc->getString("temp_line_label", "Temp");
+              tempLine.windowSeconds = static_cast<int>(wc->getInt("temp_line_window", 3600));
+              tempLine.intervalSeconds = static_cast<int>(wc->getInt("temp_line_interval", 15));
+              tempLine.minC = wc->getDouble("temp_line_min", 20.0);
+              tempLine.maxC = wc->getDouble("temp_line_max", 45.0);
+              tempLine.width = wc->getDouble("temp_line_width", 0.3);
+              tempLine.color = wc->getColorSpec(
+                  "temp_line_color", tempLine.color, "widget." + context.name + ".temp_line_color"
+              );
+            }
             return createWidget<SysmonCoresWidget>(
                 context.contentScale, f.m_sysmon, barWidth, gap, vPadding, systemColor, borderColor, showBorder,
-                showSystem, smoothing
+                showSystem, smoothing, std::move(tempLine)
             );
           }},
       {"taskbar", [](const WidgetFactory& f, const BuiltinWidgetContext& context) {

@@ -29,6 +29,7 @@ Graph::Graph() {
   auto node = std::make_unique<GraphNode>();
   node->setLineWidth(m_lineWidth);
   node->setGraphFillOpacity(m_fillOpacity);
+  node->setAaSize(m_aaSize);
   m_node = static_cast<GraphNode*>(addChild(std::move(node)));
   m_paletteConn = paletteChanged().connect([this] { applyPalette(); });
   applyPalette();
@@ -55,6 +56,13 @@ void Graph::setLineWidth(float width) {
   m_lineWidth = width;
   if (m_node != nullptr) {
     m_node->setLineWidth(width);
+  }
+}
+
+void Graph::setAaSize(float size) {
+  m_aaSize = size;
+  if (m_node != nullptr) {
+    m_node->setAaSize(size);
   }
 }
 

@@ -33,6 +33,12 @@ gap = 1              # px between bars
 show_system = true   # stack the system-time segment
 smoothing = true     # false = snap, no animation
 system_color = "error"
+# Optional temperature line over the chart (x = time, right edge = now; y = temp_line_min..max °C).
+temp_line_sensor = "quadro/temp3_input"   # "<hwmon name>/<attribute>" or an absolute path; "" = off
+temp_line_label = "Coolant"               # tooltip prefix
+temp_line_window = 3600                   # seconds of history across the chart width
+temp_line_interval = 15                   # seconds between samples
+# temp_line_min = 20, temp_line_max = 45, temp_line_width = 0.3, temp_line_color = "primary"
 ```
 Then put `cpu_cores` in a bar section (`start`/`center`/`end`).
 
@@ -41,7 +47,12 @@ Then put `cpu_cores` in a bar section (`start`/`center`/`end`).
 - `src/system/cpu_stat.{h,cpp}` + `system_monitor_service.{h,cpp}` — per-core sampling itself is
   upstream (`retainCpuCores()` / `cpuCoreUsagePercent`); the fork only adds the system-time share:
   `Totals::systemBusy`, `systemShareBetween()`, and `cpuCoreSystemPercent` filled on the same ticks.
-- `src/shell/bar/widgets/sysmon_cores_widget.{h,cpp}` — NEW widget (N `Box` bars, eased phase anim).
+- `src/shell/bar/widgets/sysmon_cores_widget.{h,cpp}` — NEW widget (N `Box` bars, eased phase anim; the
+  temp line is a `Graph` node added after the bars so it draws on top).
+- `src/shell/visuals/graph.{h,cpp}` — `Graph::setAaSize()` passthrough to `GraphNode::setAaSize` (the temp
+  line uses a 0.25 px AA band; the default 0.5 smears a hairline across two pixel rows).
+- `src/system/sensor_history.{h,cpp}` — NEW: process-lifetime hwmon history for the temp line, wall-clock
+  stamped, evicted by age, cleared on gaps > 3 intervals, mirrored to `$XDG_RUNTIME_DIR`.
 - `src/shell/bar/widget_factory.cpp` — include + `if (type == "sysmon_cores")` branch.
 - `src/shell/settings/widget_settings_registry.cpp` — `kWidgetTypeSpecs` entry + `widgetSettingSpecs`
   branch (required or `config validate` rejects the keys).
@@ -49,7 +60,8 @@ Then put `cpu_cores` in a bar section (`start`/`center`/`end`).
   top-10 processes by CPU from /proc scans, opened by clicking the sysmon_cores widget. First paint is
   since-boot averages; a 1.5s Timer switches to interval percentages (top-style, 100% = one core).
 - `src/app/application_ui.cpp` — include + `registerPanel("sysmon-processes", ...)`.
-- `meson.build` — add `sysmon_cores_widget.cpp` + `sysmon_processes_panel.cpp` to `_noctalia_sources`.
+- `meson.build` — add `sysmon_cores_widget.cpp`, `sysmon_processes_panel.cpp` and `sensor_history.cpp` to
+  `_noctalia_sources`.
 - `assets/translations/en.json` — `settings.widgets.types.sysmon-cores` label.
 - `barWidget.setTextMinWidth(px)` script binding (plugin labels have no other min-width control;
   fixed-width labels stop the centered bar group from re-centering as values change):
