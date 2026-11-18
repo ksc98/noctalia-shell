@@ -65,26 +65,35 @@ Keep the `.github/PULL_REQUEST_TEMPLATE.md` headings and checklist; a bot re-dra
 
 - `plugins/noctalia-sysmon-extras/` — the Luau plugin (symlinked into the path-source dir by `just plugin`).
   - `widgets/sensors_json.luau` — shared async `sensors -j` chip/label/value reader (used by coolant + watt).
-  - `widgets/theme_icon.luau` — themed SVG icon helper: bar font glyphs are fixed at 16px, so cpu/gpu
-    render their own SVG via `setImage` (tinted from colors.json, rewritten to tmpfs on theme change).
   - `widgets/coolant.luau` — coolant temp, threshold-coloured. Fast path reads the hwmon sysfs attribute
-    directly (~0.4s; a full `sensors -j` scan takes ~6.5s on the slow QUADRO HID), `sensors -j` fallback.
+    directly (~1ms vs ~150ms for a full `sensors -j` scan plus a process spawn), `sensors -j` fallback.
   - `widgets/cpu_watt.luau` — CPU usage % + package power ("3% · 42W") via `noctalia.readFileAsync` on
     /proc/stat and the RAPL energy counter (AMD Zen has no power in `sensors -j`); no shell spawns.
     Needs `energy_uj` user-readable — see `contrib/99-rapl-readable.rules` (udev rule; installed to
-    `/etc/udev/rules.d/`, re-applies on boot). Shows `perm?` if the rule is missing. Chip icon.
+    `/etc/udev/rules.d/`, re-applies on boot). Shows `perm?` if the rule is missing. Icon: a CPU
+    package (ui.* nodes via `barWidget.render`, DIMM styling) with side pins around a 3x3 cell grid
+    that lights in `secondary` like the RAM chips. The label sits in a `minWidth` row (`ui.label`
+    ignores `width`) and is coloured by the power thresholds.
   - `widgets/gpu_watt.luau` — GPU utilization % + power ("33% · 57W") via `nvidia-smi
-    power.draw,utilization.gpu` (the discrete card; not in `sensors -j`). Graphics-card icon (original
-    SVG — no GPU icon exists in the shipped Tabler set, and Font Awesome's is Pro-only).
+    power.draw,utilization.gpu` (the discrete card; not in `sensors -j`). Icon: a graphics card (ui.*
+    nodes via `barWidget.render`, DIMM styling: flush bracket, board, gold fingers) whose one fan is
+    a `ui.ring` gauge with a `tertiary` arc sweeping with utilization; label as cpu_watt.
+  - `widgets/ram.luau` — RAM % as a DIMM icon whose chips fill as a level meter, + "NN%" label. Drawn
+    from native ui.row/column/box nodes via `barWidget.render` (a render tree replaces the imperative
+    setText/setImage row); data from `noctalia.systemStats().ram`.
   - `widgets/watt.luau` — generic `sensors -j` watt readout (chip/label/value); unused on this box (kept
     for any `power*_input` sensor, e.g. the amdgpu iGPU PPT).
   - `widgets/cpu_cores.luau` — per-core load block sparkline.
   - `desktop/cpu_panel.luau` — desktop per-core bars + CPU/RAM history graph.
-  - `plugin.toml` — manifest: `plugin_api = 23`, widget ids + their config `[[widget.setting]]`
+  - `plugin.toml` — manifest: `plugin_api = 55` (host's current level; `clip` on rows/columns needs ≥ 52), widget ids + their config `[[widget.setting]]`
     schema. Setting labels/descriptions are translation keys (`label_key`/`description_key`) resolved
     against `translations/en.json`; literal `label`/`description` are rejected by the manifest parser.
 - `src/scripting/` — plugin host (Luau VM, bindings, manager, registry). Path sources are read directly
   from disk; only git sources get "materialized" under the state dir.
+- `src/shell/bar/widgets/sysmon_cores_widget.{h,cpp}` — native per-core CPU bar chart, plus the optional
+  `temp_line_*` overlay: a temperature line (coolant on this box) over a sliding window, x = time.
+- `src/system/sensor_history.{h,cpp}` — process-lifetime hwmon sample history for that line (outlives
+  widget rebuilds; mirrored to `$XDG_RUNTIME_DIR/noctalia/sensor-history/` so restarts keep the window).
 - `src/system/system_monitor_service.{h,cpp}` — native per-core CPU sampling (`sysmon_cores`).
 - `src/util/file_utils.h` — data/state dir resolution (`~/.local/share/noctalia`, etc.).
 - `justfile` — `configure/build/install` (native, meson) + `link-plugins/restart/plugin` (Luau plugins).
@@ -93,4 +102,4 @@ Keep the `.github/PULL_REQUEST_TEMPLATE.md` headings and checklist; a bot re-dra
 
 - `~/.config/noctalia/config.toml` — widget instances, bar layout, `[[plugins.source]]` entries.
 - Widget instance config (e.g. the coolant sensor chip/label/key) lives in config.toml under
-  `[widget.<name>]`, NOT in the plugin. Current coolant sensor: `quadro-hid-3` / `Sensor 2` / `temp2_input`.
+  `[widget.<name>]`, NOT in the plugin. Current coolant sensor: `quadro-hid-3` / `Sensor 3` / `temp3_input`.
