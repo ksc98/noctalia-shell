@@ -173,6 +173,13 @@ restart:
     if [[ -d "$hypr_dir" ]]; then
         export HYPRLAND_INSTANCE_SIGNATURE="$(ls -t "$hypr_dir" | head -1)"
     fi
+    # Started from a terminal, noctalia sits outside the login session (logind GetSessionByPID
+    # fails), so its session lock monitor stays off. Borrow the compositor's XDG_SESSION_ID.
+    hpid="$(pgrep -o -x Hyprland.patche || pgrep -o -x Hyprland || pgrep -o -x niri || true)"
+    if [[ -n "$hpid" && -r "/proc/$hpid/environ" ]]; then
+        sid="$(tr '\0' '\n' < "/proc/$hpid/environ" | sed -n 's/^XDG_SESSION_ID=//p')"
+        [[ -n "$sid" ]] && export XDG_SESSION_ID="$sid"
+    fi
     pkill -x noctalia || true
     # Graceful shutdown takes >1s; starting too early exits "noctalia is already running".
     for _ in $(seq 1 40); do pgrep -x noctalia >/dev/null || break; sleep 0.25; done
