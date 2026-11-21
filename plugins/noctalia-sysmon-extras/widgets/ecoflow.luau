@@ -15,7 +15,8 @@
 -- One native HTTP stream (noctalia.httpStream) per widget instance: no process spawns and
 -- no polling. The 1 s update tick only re-evaluates the age, restarts a stream that went
 -- silent (gateway or pod hang, or a suspend: nowMs is wall clock, so a wake shows up as a
--- long silence) and reconnects with backoff after a close.
+-- long silence) and reconnects with backoff after a close. A connection that ends before
+-- sending one SSE line drops the last reading, so an unreachable service hides at once.
 
 local url = noctalia.getConfig("url") or "https://ecoflow.kych.cloud/v1/stream"
 local maxAge = noctalia.getConfig("maxAgeSeconds") or 60
@@ -31,8 +32,10 @@ local IDLE_MS = 25000
 local BACKOFF_MIN_MS, BACKOFF_MAX_MS = 1000, 60000
 
 local stream = nil -- live httpStream handle
+local streamDelivered = false -- the live connection has sent at least one SSE line
 local status = nil -- last decoded event
-local lastAliveMs = 0 -- last event or keepalive, wall clock
+local lastSseMs = 0 -- last SSE event or keepalive: the data-age clock
+local lastByteMs = 0 -- connect or any line: the idle watchdog's clock
 local nextConnectMs = 0
 local backoffMs = BACKOFF_MIN_MS
 local shown = nil -- last setVisible value
@@ -121,7 +124,7 @@ local function paint()
     setShown(false)
     return
   end
-  local ageS = math.max(s.age_s, 0) + math.max(noctalia.nowMs() - lastAliveMs, 0) / 1000
+  local ageS = math.max(s.age_s, 0) + math.max(noctalia.nowMs() - lastSseMs, 0) / 1000
   if ageS > maxAge then
     setShown(false)
     return
@@ -152,19 +155,34 @@ local function paint()
   setShown(true)
 end
 
-local function scheduleReconnect()
+-- A connection that ends without one SSE line (refused, 503, hung) means the service is
+-- unreachable right now: drop the last reading so it hides at once instead of aging out.
+-- A clean close after real events keeps it, so a reconnect to another replica doesn't blink.
+local function connectionEnded()
+  stream = nil
+  if not streamDelivered then
+    status = nil
+    paint()
+  end
   nextConnectMs = noctalia.nowMs() + backoffMs
   backoffMs = math.min(backoffMs * 2, BACKOFF_MAX_MS)
 end
 
 local function onLine(line)
-  lastAliveMs = noctalia.nowMs()
+  local now = noctalia.nowMs()
+  lastByteMs = now
   local body = line:match("^data:%s?(.*)$")
-  if not body then
-    return -- keepalive comment, blank separator, or a non-SSE error body
+  if body == nil then
+    if line:sub(1, 1) == ":" then -- keepalive comment: the data is still current
+      lastSseMs = now
+      streamDelivered = true
+    end
+    return -- blank separator or a non-SSE error body
   end
   local decoded = noctalia.json.decode(body)
   if type(decoded) == "table" then
+    lastSseMs = now
+    streamDelivered = true
     status = decoded
     backoffMs = BACKOFF_MIN_MS
     paint()
@@ -172,24 +190,23 @@ local function onLine(line)
 end
 
 local function connect()
-  lastAliveMs = noctalia.nowMs() -- bounds a connect that hangs by the idle watchdog
+  lastByteMs = noctalia.nowMs() -- bounds a connect that hangs by the idle watchdog
+  streamDelivered = false
   stream = noctalia.httpStream({ url = url, headers = { "Accept: text/event-stream" } }, onLine, function(_result)
     -- Server close, network error or an HTTP error (a 503 arrives as ok = true, status = 503):
     -- every close reconnects from the update tick, never straight from here.
-    stream = nil
-    scheduleReconnect()
+    connectionEnded()
   end)
   if not stream then
-    scheduleReconnect()
+    connectionEnded()
   end
 end
 
 function update()
   local now = noctalia.nowMs()
-  if stream and now - lastAliveMs > IDLE_MS then
+  if stream and now - lastByteMs > IDLE_MS then
     stream.stop() -- suppresses onClose
-    stream = nil
-    scheduleReconnect()
+    connectionEnded()
   end
   if not stream and now >= nextConnectMs then
     connect()

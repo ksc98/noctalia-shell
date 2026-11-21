@@ -85,7 +85,9 @@ Keep the `.github/PULL_REQUEST_TEMPLATE.md` headings and checklist; a bot re-dra
     group, right of `net_up`. Holds one `noctalia.httpStream` on the homelab service's SSE endpoint
     (`https://ecoflow.kych.cloud/v1/stream`, setting `url`): no spawns, no polling. The 1 s update tick
     only re-checks the age, restarts a stream silent for 25 s (keepalives come every 15 s) and
-    reconnects with backoff (1 s doubling to 60 s). Display rules and glyphs mirror tmux-status-rs
+    reconnects with backoff (1 s doubling to 60 s). Data age counts from the last SSE event or
+    keepalive; a connection that ends before sending one SSE line drops the reading, so an
+    unreachable service hides at once. Display rules and glyphs mirror tmux-status-rs
     `src/segments/ecoflow/mod.rs`; hidden (`barWidget.setVisible(false)`, which collapses the slot)
     when plugged in with nothing flowing, stale, unreachable or older than `maxAgeSeconds`. Colour by
     SoC: <20 `error`, <50 `secondary`, <80 `on_surface`, else `tertiary`. Tooltip: limit/band,
