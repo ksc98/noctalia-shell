@@ -3,8 +3,8 @@
 Personal fork of Noctalia v5 (`noctalia-dev/noctalia`). Two kinds of customization live here:
 
 1. **Native C++ widgets** compiled into the shell (e.g. `sysmon_cores`) — installed via meson.
-2. **Luau plugins** under `plugins/noctalia-sysmon-extras/` (coolant / watt / cpu_cores / cpu_panel) —
-   loaded at runtime, no build step.
+2. **Luau plugins** under `plugins/noctalia-sysmon-extras/` (coolant / cpu_watt / gpu_watt / ram / ecoflow /
+   cpu_cores / cpu_panel) — loaded at runtime, no build step.
 
 Branch `kyle` = our stuff; `main` mirrors upstream. Remotes: `origin` = `ksc98/noctalia-shell` (fork),
 `upstream` = `noctalia-dev` (fetch only). See `FORK-NOTES*` for the native-widget specifics.
@@ -81,6 +81,16 @@ Keep the `.github/PULL_REQUEST_TEMPLATE.md` headings and checklist; a bot re-dra
   - `widgets/ram.luau` — RAM % as a DIMM icon whose chips fill as a level meter, + "NN%" label. Drawn
     from native ui.row/column/box nodes via `barWidget.render` (a render tree replaces the imperative
     setText/setImage row); data from `noctalia.systemStats().ram`.
+  - `widgets/ecoflow.luau` — EcoFlow power station ("󰂄 100% 󱐋462W 󰚥265W"), last in the bar's center
+    group, right of `net_up`. Holds one `noctalia.httpStream` on the homelab service's SSE endpoint
+    (`https://ecoflow.kych.cloud/v1/stream`, setting `url`): no spawns, no polling. The 1 s update tick
+    only re-checks the age, restarts a stream silent for 25 s (keepalives come every 15 s) and
+    reconnects with backoff (1 s doubling to 60 s). Display rules and glyphs mirror tmux-status-rs
+    `src/segments/ecoflow/mod.rs`; hidden (`barWidget.setVisible(false)`, which collapses the slot)
+    when plugged in with nothing flowing, stale, unreachable or older than `maxAgeSeconds`. Colour by
+    SoC: <20 `error`, <50 `secondary`, <80 `on_surface`, else `tertiary`. Tooltip: limit/band,
+    override, cell temp, time to full/empty, data age. To exercise the hide paths, point the
+    instance's `url` at a local SSE server (a dead port hides it).
   - `widgets/watt.luau` — generic `sensors -j` watt readout (chip/label/value); unused on this box (kept
     for any `power*_input` sensor, e.g. the amdgpu iGPU PPT).
   - `widgets/cpu_cores.luau` — per-core load block sparkline.
@@ -100,6 +110,8 @@ Keep the `.github/PULL_REQUEST_TEMPLATE.md` headings and checklist; a bot re-dra
 
 ## Runtime config (not in this repo)
 
-- `~/.config/noctalia/config.toml` — widget instances, bar layout, `[[plugins.source]]` entries.
+- `~/.config/noctalia/config.toml` — widget instances, bar layout, `[[plugins.source]]` entries. Not
+  chezmoi-managed (`.chezmoiignore` excludes `.config/noctalia/**`): edit the deployed file, then
+  `noctalia config validate`.
 - Widget instance config (e.g. the coolant sensor chip/label/key) lives in config.toml under
   `[widget.<name>]`, NOT in the plugin. Current coolant sensor: `quadro-hid-3` / `Sensor 3` / `temp3_input`.

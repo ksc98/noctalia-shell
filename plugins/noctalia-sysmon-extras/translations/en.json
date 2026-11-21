@@ -5,6 +5,7 @@
   "widget.cpu_watt": "CPU usage + power",
   "widget.gpu_watt": "GPU usage + power",
   "widget.ram": "RAM usage",
+  "widget.ecoflow": "EcoFlow power station",
   "widget.cpu_cores": "Per-core CPU",
   "widget.cpu_panel": "CPU panel",
   "settings": {
@@ -114,6 +115,20 @@
       },
       "history": {
         "label": "History samples"
+      }
+    },
+    "ecoflow": {
+      "url": {
+        "label": "Stream URL",
+        "description": "The ecoflow service's Server-Sent Events endpoint (/v1/stream)."
+      },
+      "max_age": {
+        "label": "Max data age (s)",
+        "description": "Hide when the reading is older than this."
+      },
+      "battery_watts": {
+        "label": "Battery activity threshold (W)",
+        "description": "Plugged in with no power flowing, still show while the battery moves at least this many watts."
       }
     }
   }

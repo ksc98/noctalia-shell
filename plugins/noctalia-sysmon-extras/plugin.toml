@@ -6,9 +6,10 @@ author = "kyle"
 license = "MIT"
 description = """
 Fills the gaps between v5's native sysmon and the v4 SystemMonitor fork: a coolant-temp
-readout, a CPU power (watts) readout, a per-core CPU block-sparkline, and a desktop panel
-with per-core bars + a CPU/RAM history graph. Sensor stats already covered by v5's native
-sysmon (CPU%, CPU temp, GPU, RAM, swap, net, disk) are intentionally NOT duplicated here,
+readout, a CPU power (watts) readout, a per-core CPU block-sparkline, an EcoFlow power-station
+readout, and a desktop panel with per-core bars + a CPU/RAM history graph. Sensor stats
+already covered by v5's native sysmon (CPU%, CPU temp, GPU, RAM, swap, net, disk) are
+intentionally NOT duplicated here,
 except RAM as a memory-stick level meter (the native sysmon only draws a linear bar).
 """
 
@@ -223,6 +224,38 @@ entry = "widgets/ram.luau"
   default = 90
   min = 0
   max = 100
+
+# ── Bar widget: EcoFlow power station ─────────────────────────────────────────
+# Battery % + wall-in / load-out watts from the homelab ecoflow service's SSE stream
+# (noctalia.httpStream, no spawns). Hidden while idle on AC, stale or unreachable.
+[[widget]]
+id = "ecoflow"
+entry = "widgets/ecoflow.luau"
+
+  [[widget.setting]]
+  key = "url"
+  type = "string"
+  label_key = "settings.ecoflow.url.label"
+  description_key = "settings.ecoflow.url.description"
+  default = "https://ecoflow.kych.cloud/v1/stream"
+
+  [[widget.setting]]
+  key = "maxAgeSeconds"
+  type = "int"
+  label_key = "settings.ecoflow.max_age.label"
+  description_key = "settings.ecoflow.max_age.description"
+  default = 60
+  min = 5
+  max = 3600
+
+  [[widget.setting]]
+  key = "batteryWatts"
+  type = "int"
+  label_key = "settings.ecoflow.battery_watts.label"
+  description_key = "settings.ecoflow.battery_watts.description"
+  default = 10
+  min = 0
+  max = 1000
 
 # ── Bar widget: per-core CPU block sparkline ──────────────────────────────────
 # The in-bar stand-in for v4's per-core chart: one Unicode block glyph per core,

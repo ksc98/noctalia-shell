@@ -12,6 +12,7 @@ what v5 lacks:
 | `gpu_watt` | bar | GPU utilization % + power (W) from `nvidia-smi --query-gpu=power.draw,utilization.gpu`. Icon: a graphics card whose fan is a ring gauge sweeping with utilization |
 | `watt` | bar | Generic power (W) from `sensors -j`, keyed by chip/label/value. Use for any sensor that exposes `power*_input` (e.g. an amdgpu iGPU's PPT) |
 | `ram` | bar | RAM use as a memory-stick icon whose chips fill as a level meter + `NN%`, from `noctalia.systemStats()`; the native sysmon only offers a linear gauge |
+| `ecoflow` | bar | EcoFlow power station: battery % (charging glyph while charging), wall-in and load-out watts, from the homelab ecoflow service's SSE stream via `noctalia.httpStream`; hidden while idle on AC, stale or unreachable; details in the tooltip |
 | `cpu_cores` | bar | Per-core load as a Unicode block sparkline (`▁▂▃▄▅▆▇█`), exact %s in the tooltip |
 | `cpu_panel` | desktop | Per-core bars + a CPU/RAM history graph (the RAM overlay) |
 
@@ -38,6 +39,9 @@ pollIntervalMs = 1000
 [widget.gpu_watt]
 type = "kyle/sysmon-extras:gpu_watt"
 pollIntervalMs = 1000
+
+[widget.ecoflow]
+type = "kyle/sysmon-extras:ecoflow"   # url defaults to https://ecoflow.kych.cloud/v1/stream
 ```
 
 ### cpu_watt: RAPL must be user-readable
