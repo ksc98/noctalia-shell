@@ -106,15 +106,15 @@ void SysmonCoresWidget::updateBars() {
     float userH = std::clamp(user, 0.0f, 1.0f) * H;
     float sysH = std::clamp(sys, 0.0f, 1.0f) * H;
     if (userH + sysH > H) {
-      sysH = std::max(0.0f, H - userH);
-    }
-    if (m_userBars[i] != nullptr) {
-      m_userBars[i]->setPosition(x, m_padPx + H - userH);
-      m_userBars[i]->setSize(m_barWpx, userH);
+      userH = std::max(0.0f, H - sysH);
     }
     if (m_sysBars[i] != nullptr) {
-      m_sysBars[i]->setPosition(x, m_padPx + H - userH - sysH);
+      m_sysBars[i]->setPosition(x, m_padPx + H - sysH);
       m_sysBars[i]->setSize(m_barWpx, sysH);
+    }
+    if (m_userBars[i] != nullptr) {
+      m_userBars[i]->setPosition(x, m_padPx + H - sysH - userH);
+      m_userBars[i]->setSize(m_barWpx, userH);
     }
   }
 }

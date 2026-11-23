@@ -2,7 +2,7 @@
 
 Personal fork of Noctalia v5 (`noctalia-dev/noctalia`, branch `main`). Adds one native bar
 widget: **`sysmon_cores`** — a per-core CPU bar chart (one vertical bar per logical core, user time
-in primary, system time stacked in error color), height-animated via the `AnimationManager` at
+in primary stacked on system time in error color at the base), height-animated via the `AnimationManager` at
 vsync. Replaces the Luau-plugin SVG chart (which was capped ~30fps by image reloads).
 
 Branch: **`kyle`** (our stuff; `main` mirrors upstream). Remotes: `origin` = `ksc98/noctalia-shell`

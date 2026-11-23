@@ -17,7 +17,7 @@ class SystemMonitorService;
 struct wl_output;
 
 // Per-core CPU bar chart: one vertical bar per logical core, height = busy %, with
-// the system-time portion stacked on top in a second color. Heights are eased toward
+// the system-time portion at the base in a second color, user time stacked above it. Heights are eased toward
 // each new sample via the AnimationManager (vsync 60fps), unlike the SVG plugin which
 // was capped at ~30fps by image reloads.
 //
