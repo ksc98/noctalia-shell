@@ -8,7 +8,7 @@
 --   free     MemFree, left as the bare track
 -- Every number comes from one /proc/meminfo read, so the slices always sum to the total and
 -- apps + kernel equals the shell's own used figure (MemTotal - MemAvailable) behind "NN%".
--- The label follows the warn/crit thresholds; the tooltip lists each slice and swap.
+-- The label follows the warn/crit thresholds; the tooltip is the legend (a colour dot per slice) plus swap.
 
 local interval = noctalia.getConfig("pollIntervalMs") or 1000
 local warn = noctalia.getConfig("warnThreshold") or 80
@@ -85,10 +85,11 @@ local function refresh()
 
     local rows = {
       { "Used", string.format("%s / %s (%.1f%%)", fmtKb(used), fmtKb(total), 100 * used / total) },
-      { "Apps", fmtKb(apps) },
-      { "Kernel & drivers", fmtKb(kernel) },
-      { "Cache", fmtKb(cache) },
-      { "Free", fmtKb(free) },
+      -- swatch = the slice's colour, so the tooltip doubles as the ring's legend.
+      { key = "Apps", value = fmtKb(apps), swatch = APPS },
+      { key = "Kernel & drivers", value = fmtKb(kernel), swatch = KERNEL },
+      { key = "Cache", value = fmtKb(cache), swatch = CACHE },
+      { key = "Free", value = fmtKb(free), swatch = TRACK },
     }
     if (m.Shmem or 0) > 0 then
       table.insert(rows, 3, { "  of which shared", fmtKb(m.Shmem) })

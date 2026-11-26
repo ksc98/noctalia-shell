@@ -1,7 +1,9 @@
 #pragma once
 
+#include "render/core/color.h"
 #include "render/core/renderer.h"
 
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -10,6 +12,8 @@ struct TooltipRow {
   std::string key;
   std::string value;
   TextEllipsize valueEllipsize = TextEllipsize::End;
+  // A colour dot before the key, e.g. a chart legend entry.
+  std::optional<Color> swatch;
 };
 
 enum class TooltipPlacement : std::uint8_t {

@@ -88,6 +88,7 @@ private:
   static ColorSpec resolveScriptColor(const ScriptColorState& state, const ColorSpec& defaultColor) noexcept;
   static ScriptColorMode scriptColorModeFromToken(std::string_view token) noexcept;
   static std::optional<ColorSpec> scriptColorFromToken(std::string_view token) noexcept;
+  static std::optional<Color> tooltipSwatchColor(std::string_view token) noexcept;
   std::filesystem::path resolvePluginPath(std::string_view path) const;
 
   void reloadScript();

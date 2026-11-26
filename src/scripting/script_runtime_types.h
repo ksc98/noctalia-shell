@@ -105,6 +105,7 @@ namespace scripting {
   struct ScriptTooltipRowPatch {
     std::string key;
     std::string value;
+    std::string swatch; // colour token ("primary", "on_surface/0.4", "#rrggbb"); empty = no dot
 
     bool operator==(const ScriptTooltipRowPatch&) const = default;
   };

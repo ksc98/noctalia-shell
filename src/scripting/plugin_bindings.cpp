@@ -123,6 +123,7 @@ namespace {
     scripting::ScriptTooltipRowPatch row;
     row.key = tableOptionalStringField(L, rowIndex, "key");
     row.value = tableOptionalStringField(L, rowIndex, "value");
+    row.swatch = tableOptionalStringField(L, rowIndex, "swatch");
     if (row.key.empty()) {
       row.key = tableOptionalStringIndex(L, rowIndex, 1);
     }

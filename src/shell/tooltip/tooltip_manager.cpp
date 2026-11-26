@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <memory>
+#include <optional>
 #include <string>
 
 namespace {
@@ -36,6 +38,17 @@ namespace {
   // Monospace so grid-mode value columns don't reflow on tiny per-tick content changes
   // (e.g. rising bitrate). Resolved via fontconfig — respects the user's `monospace` alias.
   constexpr std::string_view kValueFontFamily = "monospace";
+
+  // Legend dot before a row's key (TooltipRow::swatch).
+  constexpr float kSwatchSize = 8.0F;
+  constexpr float kSwatchGap = Style::spaceSm;
+
+  // Width every key reserves for the dot column: zero unless some row has a swatch, so keys
+  // stay aligned whether or not their own row has one.
+  float swatchLead(const std::vector<TooltipRow>& rows, float scale) {
+    const bool any = std::ranges::any_of(rows, [](const TooltipRow& row) { return row.swatch.has_value(); });
+    return any ? (kSwatchSize + kSwatchGap) * scale : 0.0F;
+  }
 
   std::unique_ptr<Label> makeTooltipTextLabel(std::string_view text, float fontSize, float maxWidth) {
     return ui::label({
@@ -657,13 +670,14 @@ TooltipManager::Size TooltipManager::measureContent(Renderer& renderer, const To
     if (rows->empty()) {
       return {};
     }
+    const float lead = swatchLead(*rows, scale);
     float maxKeyW = 0.0F;
     float maxValW = 0.0F;
     float rowH = 0.0F;
     for (const auto& row : *rows) {
       auto km = renderer.measureText(row.key, fontSize);
       const auto vm = renderer.measureText(row.value, fontSize, {FontWeight::Normal, std::string(kValueFontFamily)});
-      maxKeyW = std::max(maxKeyW, km.width);
+      maxKeyW = std::max(maxKeyW, km.width + lead);
       maxValW = std::max(maxValW, vm.width);
       rowH = std::max({rowH, km.bottom - km.top, vm.bottom - vm.top});
     }
@@ -720,15 +734,17 @@ void TooltipManager::buildScene(const TooltipContent& content, float w, float h,
   if (const auto* rows = std::get_if<std::vector<TooltipRow>>(&content)) {
     const float containerW = w - (padH + kBorder) * 2.0F;
 
+    const float lead = swatchLead(*rows, scale);
     float maxKeyW = 0.0F;
     float maxValW = 0.0F;
     for (const auto& row : *rows) {
       auto km = renderer.measureText(row.key, fontSize);
       const auto vm = renderer.measureText(row.value, fontSize, {FontWeight::Normal, std::string(kValueFontFamily)});
-      maxKeyW = std::max(maxKeyW, km.width);
+      maxKeyW = std::max(maxKeyW, km.width + lead);
       maxValW = std::max(maxValW, vm.width);
     }
     const TableColumnWidths columns = fitTableColumns(maxKeyW, maxValW);
+    const float keyTextW = std::max(0.0F, columns.key - lead);
 
     auto container = ui::column({
         .width = containerW,
@@ -744,8 +760,8 @@ void TooltipManager::buildScene(const TooltipContent& content, float w, float h,
           .maxLines = 1,
       });
       const auto km = renderer.measureText(row.key, fontSize);
-      if (km.width > columns.key + 0.5F) {
-        keyLabel->setMaxWidth(columns.key);
+      if (km.width > keyTextW + 0.5F) {
+        keyLabel->setMaxWidth(keyTextW);
       }
       keyLabel->measure(renderer);
 
@@ -764,6 +780,20 @@ void TooltipManager::buildScene(const TooltipContent& content, float w, float h,
       }
       valLabel->measure(renderer);
 
+      std::unique_ptr<Node> keyCell = std::move(keyLabel);
+      if (lead > 0.0F) {
+        // Rows without a swatch get an invisible dot so their keys line up with the others.
+        const float dotSize = kSwatchSize * scale;
+        auto dot = ui::box({
+            .fill = row.swatch.has_value() ? std::optional(fixedColorSpec(*row.swatch)) : std::nullopt,
+            .radius = dotSize * 0.5F,
+            .width = dotSize,
+            .height = dotSize,
+            .opacity = row.swatch.has_value() ? 1.0F : 0.0F,
+        });
+        keyCell = ui::row({.align = FlexAlign::Center, .gap = kSwatchGap * scale}, std::move(dot), std::move(keyCell));
+      }
+
       container->addChild(
           ui::row(
               {
@@ -771,7 +801,7 @@ void TooltipManager::buildScene(const TooltipContent& content, float w, float h,
                   .gap = tableColumnGap,
                   .widthPolicy = FlexSizePolicy::Fill,
               },
-              std::move(keyLabel), std::move(valLabel)
+              std::move(keyCell), std::move(valLabel)
           )
       );
     }

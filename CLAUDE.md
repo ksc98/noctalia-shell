@@ -81,6 +81,7 @@ Keep the `.github/PULL_REQUEST_TEMPLATE.md` headings and checklist; a bot re-dra
     free = bare track) via `barWidget.render`, + "NN%" used label coloured by the warn/crit thresholds.
     One `/proc/meminfo` read per tick feeds every slice, so they sum to the total and apps + kernel
     equals the shell's used figure (MemTotal − MemAvailable). Needs the fork's ring `segments` prop.
+    The tooltip is the legend: each slice row carries a `swatch` (fork-only tooltip row field).
   - `widgets/ecoflow.luau` — EcoFlow power station ("󰂄 100% 󱐋462W 󰚥265W"), last in the bar's center
     group, right of `net_up`. Holds one `noctalia.httpStream` on the homelab service's SSE endpoint
     (`https://ecoflow.kych.cloud/v1/stream`, setting `url`): no spawns, no polling. The 1 s update tick

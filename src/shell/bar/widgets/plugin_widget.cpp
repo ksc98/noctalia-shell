@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <charconv>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -492,6 +493,28 @@ void PluginWidget::luaSetImage(std::string_view path, bool watch, float width, f
   m_dirty = true;
 }
 
+// A tooltip swatch token: a script color ("primary", "#rrggbb[aa]"), or a role with an alpha
+// suffix ("on_surface/0.4") as ui.* props accept. Resolved now; the plugin re-sends it each update.
+std::optional<Color> PluginWidget::tooltipSwatchColor(std::string_view token) noexcept {
+  if (const auto slash = token.find('/'); slash != std::string_view::npos) {
+    const std::string_view alphaText = token.substr(slash + 1);
+    float alpha = 1.0F;
+    const auto* end = alphaText.data() + alphaText.size();
+    const auto res = std::from_chars(alphaText.data(), end, alpha);
+    if (res.ec != std::errc{} || res.ptr != end || alpha < 0.0F || alpha > 1.0F) {
+      return std::nullopt;
+    }
+    if (auto role = colorRoleFromPluginToken(token.substr(0, slash)); role.has_value()) {
+      return resolveColorSpec(colorSpecFromRole(*role, alpha));
+    }
+    return std::nullopt;
+  }
+  if (auto spec = scriptColorFromToken(token); spec.has_value()) {
+    return resolveColorSpec(*spec);
+  }
+  return std::nullopt;
+}
+
 void PluginWidget::luaSetTooltip(const scripting::ScriptTooltipPatch& tooltip) {
   if (m_area == nullptr) {
     return;
@@ -506,7 +529,14 @@ void PluginWidget::luaSetTooltip(const scripting::ScriptTooltipPatch& tooltip) {
     std::vector<TooltipRow> rows;
     rows.reserve(tooltip.rows.size());
     for (const auto& row : tooltip.rows) {
-      rows.push_back({.key = row.key, .value = row.value});
+      TooltipRow out{.key = row.key, .value = row.value};
+      if (!row.swatch.empty()) {
+        out.swatch = tooltipSwatchColor(row.swatch);
+        if (!out.swatch.has_value()) {
+          kLog.warn("plugin tooltip: invalid swatch color '{}'", row.swatch);
+        }
+      }
+      rows.push_back(std::move(out));
     }
     m_area->setTooltip(std::move(rows));
     return;

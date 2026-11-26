@@ -284,6 +284,15 @@ barWidget.setTooltip({
 })
 ```
 
+A row's named `swatch` field draws a colour dot before its key, so a tooltip can be a chart legend. It takes a palette role (optionally with an alpha suffix, `"on_surface/0.4"`) or `#RRGGBB[AA]`. When any row has one, every key reserves the dot's width so the keys stay aligned.
+
+```lua
+barWidget.setTooltip({
+  { key = "Apps", value = "5.4 GB", swatch = "primary" },
+  { key = "Cache", value = "26 GB", swatch = "on_surface/0.38" },
+})
+```
+
 ### Colors
 
 Pass a [palette color role](/noctalia/theming/palette/) or a fixed `#RRGGBB` value to `setColor` and `setGlyphColor`. With the default mode, `"on_surface"` keeps the widget's configured `color` or `icon_color`; pass `"script"` as the second argument to use `"on_surface"` literally.

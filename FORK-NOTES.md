@@ -74,6 +74,12 @@ Then put `cpu_cores` in a bar section (`start`/`center`/`end`).
   as `ColorSpec`), `lib/render/programs/ring_program.{h,cpp}` (segmented shader branch + uniforms),
   `src/scripting/ui/ui_tree_reconciler.cpp` (`kRing` whitelist, `parseColorToken`, segment parsing),
   `docs/user/plugins/development/declarative-ui.mdx`. Fork-only, so `plugin_api` is not bumped.
+- Tooltip row `swatch` (a legend dot before the key; the `ram` widget's tooltip is the ring's legend):
+  `lib/render/scene/tooltip_content.h` (`TooltipRow::swatch`, resolved `Color`),
+  `src/scripting/script_runtime_types.h` + `plugin_bindings.cpp` (row `swatch` string),
+  `src/shell/bar/widgets/plugin_widget.{h,cpp}` (`tooltipSwatchColor`: role[/alpha] or hex),
+  `src/shell/tooltip/tooltip_manager.cpp` (dot column, measured in both size and build passes),
+  `docs/user/plugins/development/entries.mdx`.
 
 ## Rebase on upstream (when v5 / noctalia-git updates)
 
