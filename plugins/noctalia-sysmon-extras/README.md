@@ -8,7 +8,7 @@ what v5 lacks:
 | Widget | Surface | What it does |
 |---|---|---|
 | `coolant` | bar | Coolant temp from `sensors -j`, keyed by chip/label/value (v4 parity), threshold-coloured |
-| `cpu_watt` | bar | CPU usage % (`/proc/stat`) + package power (W) from the RAPL energy counter — for AMD Zen, which has no power channel in `sensors -j`. Needs a udev rule (below). Icon: a CPU package whose 3x3 cell grid lights up as a usage meter |
+| `cpu_watt` | bar | CPU usage % (`/proc/stat`) + package power (W) from the RAPL energy counter — for AMD Zen, which has no power channel in `sensors -j`. Needs a udev rule (below). No icon, it sits after the cpu_cores chart |
 | `gpu_watt` | bar | GPU utilization % + power (W) from `nvidia-smi --query-gpu=power.draw,utilization.gpu`. Icon: a graphics card whose fan is a ring gauge sweeping with utilization |
 | `watt` | bar | Generic power (W) from `sensors -j`, keyed by chip/label/value. Use for any sensor that exposes `power*_input` (e.g. an amdgpu iGPU's PPT) |
 | `ram` | bar | RAM use as a memory-stick icon whose chips fill as a level meter + `NN%`, from `noctalia.systemStats()`; the native sysmon only offers a linear gauge |

@@ -13,9 +13,7 @@
 -- All reads go through noctalia.readFileAsync (plugin_api 23) — no shell spawns.
 -- energy_uj chains into /proc/uptime so each ΔµJ pairs with its own Δs.
 --
--- The icon is a CPU package drawn natively from ui.* nodes via barWidget.render (no SVG;
--- theme roles throughout), in the RAM DIMM's visual language: an outlined package with
--- stubby side pins around a 3x3 grid of cells that light in `secondary` as a usage meter.
+-- No icon: the widget sits right after the cpu_cores chart, which already identifies it.
 -- The "NN% · NNW" label follows the power warn/crit thresholds.
 
 local interval = noctalia.getConfig("pollIntervalMs") or 2000
@@ -24,20 +22,6 @@ local crit = noctalia.getConfig("critThreshold") or 180
 local rapl = noctalia.getConfig("raplPath") or "/sys/class/powercap/intel-rapl:0"
 
 noctalia.setUpdateInterval(interval)
-
--- Geometry in logical px, matching ram.luau's DIMM (1px outline, radius 2, 1.5 padding).
--- The die is a 3x3 grid of cells that light like the DIMM's chips: bottom row first,
--- left to right, the current cell filling bottom-up, so each cell is ~11% and even a
--- few % of load shows as a sliver in the first cell.
-local GRID, CELL, CELL_GAP = 3, 3, 1
-local PAD, BORDER = 1.5, 1
-local INNER = GRID * CELL + (GRID - 1) * CELL_GAP
-local PKG = INNER + 2 * (PAD + BORDER)
-local PIN_LEN, PIN_W = 2, 2 -- stubby DIP-style pins on the left/right edges, one per cell row
-
-local FILL = "secondary"
-local OUTLINE = "on_surface/0.55"
-local UNLIT = "on_surface/0.14"
 
 local lastWatt = "—"
 local lastPct = nil -- usage % (number) once /proc/stat has two samples
@@ -101,60 +85,8 @@ local function refreshWatt()
   end)
 end
 
-local function cell(i, level)
-  local f = math.clamp(level * GRID * GRID - (i - 1), 0, 1)
-  local h = math.floor(f * CELL * 10 + 0.5) / 10
-  return ui.column({
-    key = "cell" .. i,
-    width = CELL,
-    height = CELL,
-    radius = 0.6,
-    fill = UNLIT,
-    justify = "end",
-    clip = true,
-  }, {
-    ui.box({ key = "lvl", width = CELL, height = h, radius = 0.6, fill = FILL, visible = h > 0 }),
-  })
-end
-
-local function pins(key)
-  local boxes = {}
-  for r = 1, GRID do
-    boxes[r] = ui.box({ key = key .. r, width = PIN_LEN, height = PIN_W, fill = OUTLINE })
-  end
-  return ui.column({ key = key, gap = CELL + CELL_GAP - PIN_W }, boxes)
-end
-
-local function chip(level)
-  local rows = {}
-  for r = GRID, 1, -1 do -- top row first in layout; row 1 (bottom) lights first
-    local cells = {}
-    for c = 1, GRID do
-      cells[c] = cell((r - 1) * GRID + c, level)
-    end
-    rows[#rows + 1] = ui.row({ key = "row" .. r, gap = CELL_GAP }, cells)
-  end
-  return ui.row({ key = "chip", gap = 0, align = "center" }, {
-    pins("pinL"),
-    ui.column({
-      key = "pkg",
-      width = PKG,
-      height = PKG,
-      padding = PAD,
-      gap = CELL_GAP,
-      align = "center",
-      justify = "center",
-      radius = 2,
-      border = OUTLINE,
-      borderWidth = BORDER,
-    }, rows),
-    pins("pinR"),
-  })
-end
-
 local function paint()
   local text = lastPct and string.format("%d%% · %s", math.floor(lastPct + 0.5), lastWatt) or lastWatt
-  local level = lastPct and math.clamp(lastPct / 100, 0, 1) or 0
 
   local color = "on_surface"
   if lastValue then
@@ -172,8 +104,7 @@ local function paint()
   end
 
   local container = barWidget.isVertical() and ui.column or ui.row
-  barWidget.render(container({ gap = 5, align = "center", tooltip = tooltip }, {
-    chip(level),
+  barWidget.render(container({ align = "center", tooltip = tooltip }, {
     -- ui.label ignores `width` (it hugs its text), so a minWidth row reserves room for
     -- "99% · 99W" and keeps the centered bar from shifting as the value changes.
     ui.row({ key = "txtBox", minWidth = 64, align = "center" }, {

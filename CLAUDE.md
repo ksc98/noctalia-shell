@@ -70,14 +70,13 @@ Keep the `.github/PULL_REQUEST_TEMPLATE.md` headings and checklist; a bot re-dra
   - `widgets/cpu_watt.luau` — CPU usage % + package power ("3% · 42W") via `noctalia.readFileAsync` on
     /proc/stat and the RAPL energy counter (AMD Zen has no power in `sensors -j`); no shell spawns.
     Needs `energy_uj` user-readable — see `contrib/99-rapl-readable.rules` (udev rule; installed to
-    `/etc/udev/rules.d/`, re-applies on boot). Shows `perm?` if the rule is missing. Icon: a CPU
-    package (ui.* nodes via `barWidget.render`, DIMM styling) with side pins around a 3x3 cell grid
-    that lights in `secondary` like the RAM chips. The label sits in a `minWidth` row (`ui.label`
-    ignores `width`) and is coloured by the power thresholds.
+    `/etc/udev/rules.d/`, re-applies on boot). Shows `perm?` if the rule is missing. No icon:
+    it sits right after the cpu_cores chart. The label sits in a `minWidth` row (`ui.label` ignores
+    `width`) and is coloured by the power thresholds.
   - `widgets/gpu_watt.luau` — GPU utilization % + power ("33% · 57W") via `nvidia-smi
     power.draw,utilization.gpu` (the discrete card; not in `sensors -j`). Icon: a graphics card (ui.*
     nodes via `barWidget.render`, DIMM styling: flush bracket, board, gold fingers) whose one fan is
-    a `ui.ring` gauge with a `tertiary` arc sweeping with utilization; label as cpu_watt.
+    a `ui.ring` gauge with a `tertiary` arc sweeping with utilization; label in a `minWidth` row like cpu_watt.
   - `widgets/ram.luau` — RAM % as a DIMM icon whose chips fill as a level meter, + "NN%" label. Drawn
     from native ui.row/column/box nodes via `barWidget.render` (a render tree replaces the imperative
     setText/setImage row); data from `noctalia.systemStats().ram`.
