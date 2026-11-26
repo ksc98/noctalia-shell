@@ -5,8 +5,8 @@
 -- board power in watts. For a multi-GPU box, the first reported GPU is used.
 --
 -- The icon is a graphics card drawn natively from ui.* nodes via barWidget.render (no
--- SVG; theme roles throughout), in the RAM DIMM's visual language: outlined board with a
--- flush PCIe bracket and gold fingers, and one fan that is a ui.ring gauge whose
+-- SVG; theme roles throughout): outlined board with a flush PCIe bracket and gold
+-- fingers, and one fan that is a ui.ring gauge whose
 -- `tertiary` arc sweeps clockwise with GPU utilization.
 -- The "NN% · NNW" label follows the power warn/crit thresholds.
 
@@ -16,8 +16,8 @@ local crit = noctalia.getConfig("critThreshold") or 400
 
 noctalia.setUpdateInterval(interval)
 
--- Geometry in logical px, matching ram.luau's DIMM: same 12px board height, 1px outline,
--- radius 2, and the same split pin strip under it (here the PCIe gold fingers).
+-- Geometry in logical px: a 12px board with a 1px outline and radius 2, and a split strip
+-- of PCIe gold fingers under it.
 local FAN, FAN_RING = 9, 2
 local BORDER, PAD = 1, 0.5
 local BODY_W, BODY_H = 19, FAN + 2 * (BORDER + PAD)
@@ -62,7 +62,7 @@ local function card(level)
           track = UNLIT,
         }),
       }),
-      -- Gold fingers: two strips split by the key notch, styled like the DIMM's pins.
+      -- Gold fingers: two strips split by the key notch.
       ui.row({ key = "fingers", paddingH = 2, gap = 1.5 }, {
         ui.box({ key = "fingerL", width = 4.5, height = FINGER_H, radius = 0.5, fill = OUTLINE }),
         ui.box({ key = "fingerR", width = 9, height = FINGER_H, radius = 0.5, fill = OUTLINE }),

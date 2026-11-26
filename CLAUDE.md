@@ -75,11 +75,10 @@ Keep the `.github/PULL_REQUEST_TEMPLATE.md` headings and checklist; a bot re-dra
     `width`) and is coloured by the power thresholds.
   - `widgets/gpu_watt.luau` — GPU utilization % + power ("33% · 57W") via `nvidia-smi
     power.draw,utilization.gpu` (the discrete card; not in `sensors -j`). Icon: a graphics card (ui.*
-    nodes via `barWidget.render`, DIMM styling: flush bracket, board, gold fingers) whose one fan is
+    nodes via `barWidget.render`: flush bracket, board, gold fingers) whose one fan is
     a `ui.ring` gauge with a `tertiary` arc sweeping with utilization; label in a `minWidth` row like cpu_watt.
-  - `widgets/ram.luau` — RAM % as a DIMM icon whose chips fill as a level meter, + "NN%" label. Drawn
-    from native ui.row/column/box nodes via `barWidget.render` (a render tree replaces the imperative
-    setText/setImage row); data from `noctalia.systemStats().ram`.
+  - `widgets/ram.luau` — RAM % as a `ui.ring` donut via `barWidget.render`, + "NN%" label coloured by
+    the warn/crit thresholds; data from `noctalia.systemStats().ram`.
   - `widgets/ecoflow.luau` — EcoFlow power station ("󰂄 100% 󱐋462W 󰚥265W"), last in the bar's center
     group, right of `net_up`. Holds one `noctalia.httpStream` on the homelab service's SSE endpoint
     (`https://ecoflow.kych.cloud/v1/stream`, setting `url`): no spawns, no polling. The 1 s update tick
