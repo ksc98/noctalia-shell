@@ -17,7 +17,7 @@ local crit = noctalia.getConfig("critThreshold") or 90
 noctalia.setUpdateInterval(interval)
 
 -- Logical px (the host applies the bar's content scale).
-local RING, STROKE = 18, 4
+local RING, STROKE = 18, 3.5
 local APPS, KERNEL, CACHE = "primary", "secondary", "on_surface/0.38"
 local TRACK = "on_surface/0.14"
 
