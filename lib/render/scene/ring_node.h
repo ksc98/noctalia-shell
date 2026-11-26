@@ -10,7 +10,10 @@ public:
     if (m_style.fill == style.fill
         && m_style.track == style.track
         && m_style.thickness == style.thickness
-        && m_style.progress == style.progress) {
+        && m_style.progress == style.progress
+        && m_style.segmentCount == style.segmentCount
+        && m_style.segmentEnds == style.segmentEnds
+        && m_style.segmentFills == style.segmentFills) {
       return;
     }
     m_style = style;

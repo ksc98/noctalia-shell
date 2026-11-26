@@ -196,7 +196,7 @@ entry = "widgets/gpu_watt.luau"
   max = 1000
 
 # ── Bar widget: RAM usage ─────────────────────────────────────────────────────
-# Donut ring (native ui.ring) sweeping with RAM use, then "NN%".
+# Donut chart (segmented native ui.ring): apps, kernel & drivers, cache, free; then used "NN%".
 [[widget]]
 id = "ram"
 entry = "widgets/ram.luau"

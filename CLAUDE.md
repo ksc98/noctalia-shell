@@ -77,8 +77,10 @@ Keep the `.github/PULL_REQUEST_TEMPLATE.md` headings and checklist; a bot re-dra
     power.draw,utilization.gpu` (the discrete card; not in `sensors -j`). Icon: a graphics card (ui.*
     nodes via `barWidget.render`: flush bracket, board, gold fingers) whose one fan is
     a `ui.ring` gauge with a `tertiary` arc sweeping with utilization; label in a `minWidth` row like cpu_watt.
-  - `widgets/ram.luau` — RAM % as a `ui.ring` donut via `barWidget.render`, + "NN%" label coloured by
-    the warn/crit thresholds; data from `noctalia.systemStats().ram`.
+  - `widgets/ram.luau` — RAM as a segmented `ui.ring` donut (apps / kernel & drivers / reclaimable cache,
+    free = bare track) via `barWidget.render`, + "NN%" used label coloured by the warn/crit thresholds.
+    One `/proc/meminfo` read per tick feeds every slice, so they sum to the total and apps + kernel
+    equals the shell's used figure (MemTotal − MemAvailable). Needs the fork's ring `segments` prop.
   - `widgets/ecoflow.luau` — EcoFlow power station ("󰂄 100% 󱐋462W 󰚥265W"), last in the bar's center
     group, right of `net_up`. Holds one `noctalia.httpStream` on the homelab service's SSE endpoint
     (`https://ecoflow.kych.cloud/v1/stream`, setting `url`): no spawns, no polling. The 1 s update tick

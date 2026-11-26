@@ -8,7 +8,8 @@
 
 struct RingStyle;
 
-// Draws RingStyle: a track circle plus a round-capped clockwise arc, centred in the given bounds.
+// Draws RingStyle: a track circle plus a round-capped clockwise arc (or flat-joined donut-chart
+// segments), centred in the given bounds.
 class RingProgram final : public RenderExtension {
 public:
   void ensureInitialized();
@@ -33,5 +34,8 @@ private:
   GLint m_thicknessLocation = -1;
   GLint m_progressLocation = -1;
   GLint m_aaLocation = -1;
+  GLint m_segCountLocation = -1;
+  GLint m_segEndsLocation = -1;
+  GLint m_segFillsLocation = -1;
   GLint m_transformLocation = -1;
 };

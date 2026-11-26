@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <stdexcept>
 
 namespace {
@@ -34,6 +35,10 @@ void main() {
   // Distances are logical px. The fill is the exact distance to a round-capped arc, so the caps
   // and the arc body blend without an angular seam; progress 0 draws no fill and 1 draws the
   // closed circle without caps.
+  //
+  // Segmented mode (u_seg_count > 0) replaces the arc with flat-joined slices. Joins and the two
+  // outer ends are anti-aliased by angular distance times the pixel's radius (its arc length to
+  // the boundary), so edges stay one AA width wide at any ring size.
   constexpr char kFragmentShaderSource[] = R"(
 precision highp float;
 
@@ -43,9 +48,21 @@ uniform vec4 u_track;
 uniform float u_thickness;
 uniform float u_progress;
 uniform float u_aa;
+uniform float u_seg_count;
+uniform vec4 u_seg_ends;
+uniform vec4 u_seg_fills[4];
 varying vec2 v_pixel;
 
 const float TWO_PI = 6.28318530718;
+
+vec4 premul(vec4 c) {
+    return vec4(c.rgb * c.a, c.a);
+}
+
+// 0 before the boundary, 1 past it; `dist` is signed arc length in px.
+float edge(float dist) {
+    return clamp(dist / (2.0 * u_aa) + 0.5, 0.0, 1.0);
+}
 
 void main() {
     vec2 p = v_pixel - u_rect_size * 0.5;
@@ -54,6 +71,43 @@ void main() {
     float ringDist = abs(length(p) - radius);
 
     float trackCov = 1.0 - smoothstep(-u_aa, u_aa, ringDist - halfStroke);
+
+    if (u_seg_count > 0.5) {
+        float len = length(p);
+        float angle = atan(p.x, -p.y);
+        if (angle < 0.0) {
+            angle += TWO_PI;
+        }
+        float total = u_seg_ends.x;
+        if (u_seg_count > 1.5) total = u_seg_ends.y;
+        if (u_seg_count > 2.5) total = u_seg_ends.z;
+        if (u_seg_count > 3.5) total = u_seg_ends.w;
+        float sweep = total * TWO_PI;
+
+        float cov = trackCov;
+        if (total < 1.0) {
+            // Past the midpoint of the empty gap, measure as a small negative angle so the
+            // 12 o'clock start edge anti-aliases on both sides.
+            if (angle > (sweep + TWO_PI) * 0.5) {
+                angle -= TWO_PI;
+            }
+            cov *= edge(min(angle, sweep - angle) * len);
+        }
+
+        vec4 color = premul(u_seg_fills[0]);
+        if (u_seg_count > 1.5) color = mix(color, premul(u_seg_fills[1]), edge((angle - u_seg_ends.x * TWO_PI) * len));
+        if (u_seg_count > 2.5) color = mix(color, premul(u_seg_fills[2]), edge((angle - u_seg_ends.y * TWO_PI) * len));
+        if (u_seg_count > 3.5) color = mix(color, premul(u_seg_fills[3]), edge((angle - u_seg_ends.z * TWO_PI) * len));
+
+        float segA = cov * color.a;
+        float segTrackA = trackCov * u_track.a * (1.0 - segA);
+        float segAlpha = segA + segTrackA;
+        if (segAlpha <= 0.0) {
+            discard;
+        }
+        gl_FragColor = vec4(color.rgb * cov + u_track.rgb * segTrackA, segAlpha);
+        return;
+    }
 
     float fillCov = 0.0;
     if (u_progress >= 1.0) {
@@ -102,6 +156,9 @@ void RingProgram::ensureInitialized() {
   m_thicknessLocation = glGetUniformLocation(m_program.id(), "u_thickness");
   m_progressLocation = glGetUniformLocation(m_program.id(), "u_progress");
   m_aaLocation = glGetUniformLocation(m_program.id(), "u_aa");
+  m_segCountLocation = glGetUniformLocation(m_program.id(), "u_seg_count");
+  m_segEndsLocation = glGetUniformLocation(m_program.id(), "u_seg_ends");
+  m_segFillsLocation = glGetUniformLocation(m_program.id(), "u_seg_fills");
   m_transformLocation = glGetUniformLocation(m_program.id(), "u_transform");
 
   if (m_positionLocation < 0
@@ -114,6 +171,9 @@ void RingProgram::ensureInitialized() {
       || m_thicknessLocation < 0
       || m_progressLocation < 0
       || m_aaLocation < 0
+      || m_segCountLocation < 0
+      || m_segEndsLocation < 0
+      || m_segFillsLocation < 0
       || m_transformLocation < 0) {
     throw std::runtime_error("failed to query ring shader locations");
   }
@@ -131,6 +191,9 @@ void RingProgram::destroy() {
   m_thicknessLocation = -1;
   m_progressLocation = -1;
   m_aaLocation = -1;
+  m_segCountLocation = -1;
+  m_segEndsLocation = -1;
+  m_segFillsLocation = -1;
   m_transformLocation = -1;
 }
 
@@ -167,6 +230,21 @@ void RingProgram::draw(
   glUniform1f(m_thicknessLocation, thickness);
   glUniform1f(m_progressLocation, std::clamp(style.progress, 0.0F, 1.0F));
   glUniform1f(m_aaLocation, aa);
+  const int segCount = std::clamp(style.segmentCount, 0, RingStyle::kMaxSegments);
+  std::array<GLfloat, RingStyle::kMaxSegments * 4> segFills{};
+  for (int i = 0; i < segCount; ++i) {
+    const Color& c = style.segmentFills[static_cast<std::size_t>(i)];
+    const auto base = static_cast<std::size_t>(i) * 4;
+    segFills[base] = c.r;
+    segFills[base + 1] = c.g;
+    segFills[base + 2] = c.b;
+    segFills[base + 3] = c.a;
+  }
+  glUniform1f(m_segCountLocation, static_cast<GLfloat>(segCount));
+  glUniform4f(
+      m_segEndsLocation, style.segmentEnds[0], style.segmentEnds[1], style.segmentEnds[2], style.segmentEnds[3]
+  );
+  glUniform4fv(m_segFillsLocation, RingStyle::kMaxSegments, segFills.data());
   glUniformMatrix3fv(m_transformLocation, 1, GL_FALSE, quadTransform.m.data());
   const auto posAttr = static_cast<GLuint>(m_positionLocation);
   glVertexAttribPointer(posAttr, 2, GL_FLOAT, GL_FALSE, 0, vertices.data());

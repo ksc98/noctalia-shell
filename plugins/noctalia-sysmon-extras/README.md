@@ -11,7 +11,7 @@ what v5 lacks:
 | `cpu_watt` | bar | CPU usage % (`/proc/stat`) + package power (W) from the RAPL energy counter — for AMD Zen, which has no power channel in `sensors -j`. Needs a udev rule (below). No icon, it sits after the cpu_cores chart |
 | `gpu_watt` | bar | GPU utilization % + power (W) from `nvidia-smi --query-gpu=power.draw,utilization.gpu`. Icon: a graphics card whose fan is a ring gauge sweeping with utilization |
 | `watt` | bar | Generic power (W) from `sensors -j`, keyed by chip/label/value. Use for any sensor that exposes `power*_input` (e.g. an amdgpu iGPU's PPT) |
-| `ram` | bar | RAM use as a donut ring (native `ui.ring`) + `NN%`, from `noctalia.systemStats()`; the native sysmon only offers a linear gauge |
+| `ram` | bar | RAM as a donut chart (segmented native `ui.ring`: apps, kernel & drivers, reclaimable cache, free) + used `NN%`, from `/proc/meminfo`; the native sysmon only offers a linear gauge |
 | `ecoflow` | bar | EcoFlow power station: battery % (charging glyph while charging), wall-in and load-out watts, from the homelab ecoflow service's SSE stream via `noctalia.httpStream`; hidden while idle on AC, stale or unreachable; details in the tooltip |
 | `cpu_cores` | bar | Per-core load as a Unicode block sparkline (`▁▂▃▄▅▆▇█`), exact %s in the tooltip |
 | `cpu_panel` | desktop | Per-core bars + a CPU/RAM history graph (the RAM overlay) |

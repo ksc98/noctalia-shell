@@ -142,8 +142,16 @@ struct SpinnerStyle {
 
 // Circular progress gauge: a full track circle with a clockwise fill arc from 12 o'clock. Lengths are logical px.
 struct RingStyle {
+  static constexpr int kMaxSegments = 4;
+
   Color fill{};
   Color track{};
   float thickness = 2.0F;
   float progress = 0.0F; // clamped 0-1
+  // segmentCount > 0 draws a donut chart instead of fill/progress: segment i spans clockwise from
+  // segmentEnds[i - 1] (0 for the first) to segmentEnds[i], as fractions of the circle, with flat
+  // joins and ends. Ends are cumulative, ascending and at most 1.
+  std::array<Color, kMaxSegments> segmentFills{};
+  std::array<float, kMaxSegments> segmentEnds{};
+  int segmentCount = 0;
 };

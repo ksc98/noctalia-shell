@@ -5,6 +5,7 @@
 #include "core/input/keybind_matcher.h"
 #include "core/log.h"
 #include "render/core/color.h"
+#include "render/core/render_styles.h"
 #include "render/core/renderer.h"
 #include "render/scene/input_area.h"
 #include "scripting/ui/pixel_stream_view.h"
@@ -181,11 +182,8 @@ namespace ui {
     // Role token ("primary", "on_surface", …) with an optional alpha suffix
     // ("primary/0.6" → the role at 60% alpha, resolved live against the palette),
     // or hex ("#rrggbb[aa]"). Alpha is 0.0–1.0; hex carries its own alpha byte.
-    std::optional<ColorSpec> parseColor(const UiTreeNode& node, const char* key) {
-      const std::string* token = strProp(node, key);
-      if (token == nullptr) {
-        return std::nullopt;
-      }
+    // `key` names the prop the token came from, for warnings.
+    std::optional<ColorSpec> parseColorToken(const UiTreeNode& node, const char* key, const std::string* token) {
       std::string_view base = *token;
       float alpha = 1.0F;
       if (const auto slash = base.find('/'); slash != std::string_view::npos) {
@@ -214,6 +212,14 @@ namespace ui {
       }
       kLog.warn("ui node '{}': unknown color '{}' for prop '{}'", node.type, *token, key);
       return std::nullopt;
+    }
+
+    std::optional<ColorSpec> parseColor(const UiTreeNode& node, const char* key) {
+      const std::string* token = strProp(node, key);
+      if (token == nullptr) {
+        return std::nullopt;
+      }
+      return parseColorToken(node, key, token);
     }
 
     std::optional<FontWeight> parseFontWeight(const UiTreeNode& node) {
@@ -582,8 +588,9 @@ namespace ui {
       static const std::unordered_set<std::string> kProgress = {"width",   "height",   "flexGrow",   "opacity",
                                                                 "visible", "progress", "fill",       "track",
                                                                 "radius",  "marker",   "markerColor"};
-      static const std::unordered_set<std::string> kRing = {"width",    "height", "flexGrow", "opacity",  "visible",
-                                                            "progress", "fill",   "track",    "thickness"};
+      static const std::unordered_set<std::string> kRing = {"width",     "height",   "flexGrow",    "opacity",
+                                                            "visible",   "progress", "fill",        "track",
+                                                            "thickness", "segments", "segmentFills"};
       static const std::unordered_set<std::string> kButton = {"width",       "height",  "flexGrow",     "opacity",
                                                               "visible",     "text",    "glyph",        "fontSize",
                                                               "glyphSize",   "variant", "contentAlign", "enabled",
@@ -2042,6 +2049,27 @@ namespace ui {
       ring->setTrack(track.value_or(Ring::kDefaultTrack));
       const double* thickness = numProp(desired, "thickness");
       ring->setThickness(thickness != nullptr ? scaled(*thickness) : Ring::kDefaultThickness * m_scale);
+      // Donut chart: segments[i] is a share of the circle drawn in segmentFills[i]. A slice without
+      // a valid fill takes the default fill, so the shares after it keep their place.
+      std::vector<RingSegment> segments;
+      if (const std::vector<double>* values = arrayProp(desired, "segments")) {
+        const std::vector<std::string>* fills = strArrayProp(desired, "segmentFills");
+        if (values->size() > static_cast<std::size_t>(RingStyle::kMaxSegments)) {
+          kLog.warn("ui tree: ring keeps the first {} segments", RingStyle::kMaxSegments);
+        }
+        for (std::size_t i = 0; i < values->size() && i < static_cast<std::size_t>(RingStyle::kMaxSegments); ++i) {
+          std::optional<ColorSpec> segmentFill;
+          if (fills != nullptr && i < fills->size()) {
+            segmentFill = parseColorToken(desired, "segmentFills", &(*fills)[i]);
+          }
+          segments.push_back(
+              RingSegment{.value = static_cast<float>((*values)[i]), .fill = segmentFill.value_or(Ring::kDefaultFill)}
+          );
+        }
+      } else {
+        warnMistypedOptionalProp(desired, "segments", "an array of numbers");
+      }
+      ring->setSegments(std::move(segments));
       ring->setSize(
           width != nullptr ? scaled(*width) : node->width(), height != nullptr ? scaled(*height) : node->height()
       );

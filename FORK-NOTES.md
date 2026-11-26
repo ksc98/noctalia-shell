@@ -68,6 +68,12 @@ Then put `cpu_cores` in a bar section (`start`/`center`/`end`).
   `src/scripting/script_runtime_types.h` (+`textMinWidth` patch field), `src/scripting/script_runtime.cpp`
   (mergePatch), `src/scripting/plugin_bindings.cpp` (binding), `src/shell/bar/widgets/plugin_widget.cpp`
   (apply via `Label::setMinWidth`, content-scaled).
+- `ui.ring` donut-chart mode (`segments` + `segmentFills` props, used by the `ram` plugin widget):
+  `lib/render/core/render_styles.h` (`RingStyle` segment arrays), `lib/render/scene/ring_node.h`
+  (repaint check covers them), `lib/ui/controls/ring.{h,cpp}` (`RingSegment`, `setSegments`, fills kept
+  as `ColorSpec`), `lib/render/programs/ring_program.{h,cpp}` (segmented shader branch + uniforms),
+  `src/scripting/ui/ui_tree_reconciler.cpp` (`kRing` whitelist, `parseColorToken`, segment parsing),
+  `docs/user/plugins/development/declarative-ui.mdx`. Fork-only, so `plugin_api` is not bumped.
 
 ## Rebase on upstream (when v5 / noctalia-git updates)
 
